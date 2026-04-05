@@ -1,8 +1,12 @@
 .DS_Store
 /.build
+/build
+/dist
 /Packages
 xcuserdata/
 DerivedData/
 .swiftpm/
 *.xcodeproj/xcuserdata/
 *.xcodeproj/project.xcworkspace/xcuserdata/
+CLAUDE.md
+AGENTS.md

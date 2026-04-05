@@ -5,10 +5,12 @@ import SwiftUI
 /// Supports .mov, .mp4, .m4v formats including HEVC with alpha.
 struct VideoWallpaperView: NSViewRepresentable {
     let url: URL
+    var isMuted: Bool = true
 
     func makeNSView(context: Context) -> VideoPlayerNSView {
         let view = VideoPlayerNSView()
         view.loadVideo(url: url)
+        view.setMuted(isMuted)
         return view
     }
 
@@ -16,6 +18,7 @@ struct VideoWallpaperView: NSViewRepresentable {
         if nsView.currentURL != url {
             nsView.loadVideo(url: url)
         }
+        nsView.setMuted(isMuted)
     }
 }
 
@@ -70,6 +73,10 @@ final class VideoPlayerNSView: NSView {
         queuePlayer.play()
     }
 
+    func setMuted(_ muted: Bool) {
+        player?.isMuted = muted
+    }
+
     func pause() {
         player?.pause()
     }
@@ -77,6 +84,4 @@ final class VideoPlayerNSView: NSView {
     func resume() {
         player?.play()
     }
-
-    // ARC handles AVPlayer/AVPlayerLooper cleanup on dealloc
 }
