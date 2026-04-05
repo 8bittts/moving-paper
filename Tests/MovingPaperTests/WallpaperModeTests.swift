@@ -7,17 +7,17 @@ struct WallpaperModeTests {
 
     /// Mirrors the WallpaperMode enum from WallpaperManager
     enum TestWallpaperMode: String {
-        case allDisplays
-        case perDisplay
+        case allDesktops
+        case perDesktop
     }
 
     @Test func modeRawValues() {
-        #expect(TestWallpaperMode.allDisplays.rawValue == "allDisplays")
-        #expect(TestWallpaperMode.perDisplay.rawValue == "perDisplay")
+        #expect(TestWallpaperMode.allDesktops.rawValue == "allDesktops")
+        #expect(TestWallpaperMode.perDesktop.rawValue == "perDesktop")
     }
 
     @Test func modesAreDistinct() {
-        #expect(TestWallpaperMode.allDisplays != TestWallpaperMode.perDisplay)
+        #expect(TestWallpaperMode.allDesktops != TestWallpaperMode.perDesktop)
     }
 }
 
@@ -25,8 +25,6 @@ struct WallpaperModeTests {
 struct DisplayIDTests {
 
     @Test func screensHaveDisplayIDs() {
-        // In a test environment, NSScreen.screens may be empty (headless CI),
-        // but if screens exist, each should produce a displayID.
         for screen in NSScreen.screens {
             let displayID = screen.deviceDescription[
                 NSDeviceDescriptionKey("NSScreenNumber")

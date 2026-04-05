@@ -25,7 +25,7 @@ final class StatusBarController {
         rebuildMenu()
 
         // Rebuild menu when any relevant state changes
-        wallpaperManager.$displayFiles
+        wallpaperManager.$desktopFiles
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.rebuildMenu() }
             .store(in: &cancellables)
@@ -55,10 +55,10 @@ final class StatusBarController {
         let menu = NSMenu()
 
         switch wallpaperManager.mode {
-        case .allDisplays:
-            buildAllDisplaysMenu(menu)
-        case .perDisplay:
-            buildPerDisplayMenu(menu)
+        case .allDesktops:
+            buildAllDesktopsMenu(menu)
+        case .perDesktop:
+            buildPerDesktopMenu(menu)
         }
 
         menu.addItem(.separator())
@@ -80,21 +80,21 @@ final class StatusBarController {
         let modeMenu = NSMenu()
 
         let allItem = NSMenuItem(
-            title: "All Displays",
-            action: #selector(setModeAllDisplays),
+            title: "All Desktops",
+            action: #selector(setModeAllDesktops),
             keyEquivalent: ""
         )
         allItem.target = self
-        allItem.state = wallpaperManager.mode == .allDisplays ? .on : .off
+        allItem.state = wallpaperManager.mode == .allDesktops ? .on : .off
         modeMenu.addItem(allItem)
 
         let perItem = NSMenuItem(
-            title: "Per Display",
-            action: #selector(setModePerDisplay),
+            title: "Per Desktop",
+            action: #selector(setModePerDesktop),
             keyEquivalent: ""
         )
         perItem.target = self
-        perItem.state = wallpaperManager.mode == .perDisplay ? .on : .off
+        perItem.state = wallpaperManager.mode == .perDesktop ? .on : .off
         modeMenu.addItem(perItem)
 
         let modeItem = NSMenuItem(title: "Wallpaper Mode", action: nil, keyEquivalent: "")
@@ -144,7 +144,7 @@ final class StatusBarController {
 
     // MARK: - All Displays Mode Menu
 
-    private func buildAllDisplaysMenu(_ menu: NSMenu) {
+    private func buildAllDesktopsMenu(_ menu: NSMenu) {
         if let url = wallpaperManager.sharedFileURL {
             let fileItem = NSMenuItem(title: url.lastPathComponent, action: nil, keyEquivalent: "")
             fileItem.isEnabled = false
@@ -173,7 +173,7 @@ final class StatusBarController {
 
     // MARK: - Per Display Mode Menu
 
-    private func buildPerDisplayMenu(_ menu: NSMenu) {
+    private func buildPerDesktopMenu(_ menu: NSMenu) {
         let displays = wallpaperManager.connectedDisplays
 
         if displays.isEmpty {
@@ -213,7 +213,7 @@ final class StatusBarController {
             chooseItem.tag = Int(display.id)
             displayMenu.addItem(chooseItem)
 
-            let hasFile = wallpaperManager.displayFiles[display.id] != nil
+            let hasFile = wallpaperManager.fileURL(for: display.id) != nil
             let indicator = hasFile ? ">" : " "
             let displayTitle = "\(display.name) \(indicator)"
             let displayItem = NSMenuItem(title: displayTitle, action: nil, keyEquivalent: "")
@@ -266,12 +266,12 @@ final class StatusBarController {
         wallpaperManager.toggleMute()
     }
 
-    @objc private func setModeAllDisplays() {
-        wallpaperManager.setMode(.allDisplays)
+    @objc private func setModeAllDesktops() {
+        wallpaperManager.setMode(.allDesktops)
     }
 
-    @objc private func setModePerDisplay() {
-        wallpaperManager.setMode(.perDisplay)
+    @objc private func setModePerDesktop() {
+        wallpaperManager.setMode(.perDesktop)
     }
 
     @objc private func checkForUpdates() {

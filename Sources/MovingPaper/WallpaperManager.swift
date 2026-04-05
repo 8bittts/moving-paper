@@ -1,24 +1,55 @@
 import AppKit
 import Combine
 
-/// How wallpapers are assigned to displays.
+/// How wallpapers are assigned.
 enum WallpaperMode: String {
-    case allDisplays   // one file on every screen
-    case perDisplay    // different file per screen
+    case allDesktops   // one file across all screens and spaces
+    case perDesktop    // different file per screen + space (like native macOS)
+}
+
+/// Composite key for per-desktop wallpaper assignments.
+/// Combines physical display + macOS Space for unique identification.
+struct DesktopKey: Hashable {
+    let displayID: CGDirectDisplayID
+    let spaceID: UInt64
+
+    /// Key for "all desktops" mode — space is irrelevant.
+    init(displayID: CGDirectDisplayID) {
+        self.displayID = displayID
+        self.spaceID = 0
+    }
+
+    init(displayID: CGDirectDisplayID, spaceID: UInt64) {
+        self.displayID = displayID
+        self.spaceID = spaceID
+    }
+}
+
+// MARK: - Space Detection (CoreGraphics private, stable since 10.6)
+
+@_silgen_name("CGSMainConnectionID")
+private func CGSMainConnectionID() -> UInt32
+
+@_silgen_name("CGSGetActiveSpace")
+private func CGSGetActiveSpace(_ cid: UInt32) -> UInt64
+
+/// Returns the active macOS Space ID for the current desktop.
+func currentSpaceID() -> UInt64 {
+    CGSGetActiveSpace(CGSMainConnectionID())
 }
 
 /// Central coordinator: manages per-screen wallpaper windows, file selection,
-/// playback state, sound, and power-aware pause/resume.
+/// playback state, sound, space tracking, and power-aware pause/resume.
 @MainActor
 final class WallpaperManager: ObservableObject {
 
     // MARK: - Published State
 
-    /// Per-display file assignments. Key is CGDirectDisplayID.
-    @Published var displayFiles: [CGDirectDisplayID: URL] = [:]
+    /// Per-desktop file assignments. Key combines display + space.
+    @Published var desktopFiles: [DesktopKey: URL] = [:]
 
-    /// Whether all displays share one wallpaper or each gets its own.
-    @Published var mode: WallpaperMode = .allDisplays
+    /// Whether all desktops share one wallpaper or each gets its own.
+    @Published var mode: WallpaperMode = .allDesktops
 
     /// User-initiated pause (distinct from system pause).
     @Published var isPaused: Bool = false
@@ -30,26 +61,40 @@ final class WallpaperManager: ObservableObject {
 
     private var controllers: [CGDirectDisplayID: WallpaperWindowController] = [:]
     private var screenObserver: Any?
+    private var spaceObserver: Any?
     private var occlusionObservers: [Any] = []
     private var powerObservers: [Any] = []
     private var systemPaused: Bool = false
+    private var activeSpaceID: UInt64 = 0
 
     init() {
+        activeSpaceID = currentSpaceID()
         observeScreenChanges()
+        observeSpaceChanges()
         observePowerState()
     }
 
     // MARK: - Computed Helpers
 
-    /// In allDisplays mode, returns the single shared file URL (if any).
+    /// In allDesktops mode, returns the single shared file URL (if any).
     var sharedFileURL: URL? {
-        guard mode == .allDisplays else { return nil }
-        return displayFiles.values.first
+        guard mode == .allDesktops else { return nil }
+        return desktopFiles.values.first
     }
 
-    /// Human-readable name for a file URL.
+    /// File name for a display on the current space.
     func fileName(for displayID: CGDirectDisplayID) -> String? {
-        displayFiles[displayID]?.lastPathComponent
+        fileURL(for: displayID)?.lastPathComponent
+    }
+
+    /// File URL for a display, respecting the current mode and space.
+    func fileURL(for displayID: CGDirectDisplayID) -> URL? {
+        switch mode {
+        case .allDesktops:
+            return desktopFiles[DesktopKey(displayID: displayID)]
+        case .perDesktop:
+            return desktopFiles[DesktopKey(displayID: displayID, spaceID: activeSpaceID)]
+        }
     }
 
     /// Determine file type from URL extension.
@@ -61,7 +106,7 @@ final class WallpaperManager: ObservableObject {
         }
     }
 
-    /// All connected display IDs, ordered by screen position (left to right).
+    /// All connected displays.
     var connectedDisplays: [(id: CGDirectDisplayID, name: String)] {
         NSScreen.screens.compactMap { screen in
             guard let id = screen.displayID else { return nil }
@@ -69,15 +114,23 @@ final class WallpaperManager: ObservableObject {
         }
     }
 
-    /// Whether any display has a wallpaper assigned.
+    /// Whether any desktop has a wallpaper assigned.
     var hasAnyWallpaper: Bool {
-        !displayFiles.isEmpty
+        !desktopFiles.isEmpty
+    }
+
+    /// Whether the current space has any wallpaper on any display.
+    var currentSpaceHasWallpaper: Bool {
+        for screen in NSScreen.screens {
+            guard let id = screen.displayID else { continue }
+            if fileURL(for: id) != nil { return true }
+        }
+        return false
     }
 
     // MARK: - File Selection
 
-    /// Open file picker and assign result to target display(s).
-    /// Pass `nil` for displayID in allDisplays mode.
+    /// Open file picker and assign result.
     func selectFile(for displayID: CGDirectDisplayID? = nil) {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [
@@ -91,31 +144,36 @@ final class WallpaperManager: ObservableObject {
         setWallpaper(url: url, for: displayID)
     }
 
-    /// Assign a wallpaper file to a display (or all displays).
+    /// Assign a wallpaper file.
     func setWallpaper(url: URL, for displayID: CGDirectDisplayID? = nil) {
         isPaused = false
 
         switch mode {
-        case .allDisplays:
-            // Apply to every connected display
-            displayFiles.removeAll()
+        case .allDesktops:
+            desktopFiles.removeAll()
             for screen in NSScreen.screens {
                 if let id = screen.displayID {
-                    displayFiles[id] = url
+                    desktopFiles[DesktopKey(displayID: id)] = url
                 }
             }
-        case .perDisplay:
+        case .perDesktop:
             if let id = displayID {
-                displayFiles[id] = url
+                let key = DesktopKey(displayID: id, spaceID: activeSpaceID)
+                desktopFiles[key] = url
             }
         }
 
         rebuildAllWindows()
     }
 
-    /// Remove wallpaper from a specific display.
+    /// Remove wallpaper from a specific display (current space in perDesktop mode).
     func clearWallpaper(for displayID: CGDirectDisplayID) {
-        displayFiles.removeValue(forKey: displayID)
+        switch mode {
+        case .allDesktops:
+            desktopFiles.removeValue(forKey: DesktopKey(displayID: displayID))
+        case .perDesktop:
+            desktopFiles.removeValue(forKey: DesktopKey(displayID: displayID, spaceID: activeSpaceID))
+        }
         if let controller = controllers.removeValue(forKey: displayID) {
             controller.close()
         }
@@ -123,24 +181,30 @@ final class WallpaperManager: ObservableObject {
 
     /// Remove all wallpapers.
     func clearAllWallpapers() {
-        displayFiles.removeAll()
+        desktopFiles.removeAll()
         tearDownWindows()
     }
 
-    /// Switch between allDisplays and perDisplay modes.
+    /// Switch modes.
     func setMode(_ newMode: WallpaperMode) {
         guard newMode != mode else { return }
 
-        if newMode == .allDisplays, let firstURL = displayFiles.values.first {
-            // Switching to universal: use whatever the first display had
-            displayFiles.removeAll()
+        if newMode == .allDesktops, let firstURL = desktopFiles.values.first {
+            desktopFiles.removeAll()
             for screen in NSScreen.screens {
                 if let id = screen.displayID {
-                    displayFiles[id] = firstURL
+                    desktopFiles[DesktopKey(displayID: id)] = firstURL
                 }
             }
+        } else if newMode == .perDesktop {
+            // Migrate allDesktops entries to current space
+            let oldFiles = desktopFiles
+            desktopFiles.removeAll()
+            for (key, url) in oldFiles {
+                let newKey = DesktopKey(displayID: key.displayID, spaceID: activeSpaceID)
+                desktopFiles[newKey] = url
+            }
         }
-        // Switching to perDisplay: keep existing assignments as-is
 
         mode = newMode
         rebuildAllWindows()
@@ -168,7 +232,7 @@ final class WallpaperManager: ObservableObject {
 
         for screen in NSScreen.screens {
             guard let displayID = screen.displayID else { continue }
-            guard let url = displayFiles[displayID] else { continue }
+            guard let url = fileURL(for: displayID) else { continue }
             guard let type = fileType(for: url) else { continue }
 
             let controller = WallpaperWindowController(screen: screen)
@@ -188,6 +252,7 @@ final class WallpaperManager: ObservableObject {
     func tearDown() {
         tearDownWindows()
         removeScreenObserver()
+        removeSpaceObserver()
         for observer in powerObservers {
             NotificationCenter.default.removeObserver(observer)
         }
@@ -213,19 +278,15 @@ final class WallpaperManager: ObservableObject {
             Task { @MainActor in
                 guard let self else { return }
 
-                if self.mode == .allDisplays, let url = self.sharedFileURL {
-                    // New displays get the shared wallpaper
+                if self.mode == .allDesktops, let url = self.sharedFileURL {
                     for screen in NSScreen.screens {
-                        if let id = screen.displayID, self.displayFiles[id] == nil {
-                            self.displayFiles[id] = url
+                        if let id = screen.displayID {
+                            let key = DesktopKey(displayID: id)
+                            if self.desktopFiles[key] == nil {
+                                self.desktopFiles[key] = url
+                            }
                         }
                     }
-                }
-
-                // Clean up disconnected displays
-                let activeIDs = Set(NSScreen.screens.compactMap { $0.displayID })
-                for id in self.displayFiles.keys where !activeIDs.contains(id) {
-                    self.displayFiles.removeValue(forKey: id)
                 }
 
                 self.rebuildAllWindows()
@@ -237,6 +298,30 @@ final class WallpaperManager: ObservableObject {
         if let observer = screenObserver {
             NotificationCenter.default.removeObserver(observer)
             screenObserver = nil
+        }
+    }
+
+    // MARK: - Space Changes
+
+    private func observeSpaceChanges() {
+        spaceObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.activeSpaceDidChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                self.activeSpaceID = currentSpaceID()
+                // Rebuild to show the wallpaper assigned to this space
+                self.rebuildAllWindows()
+            }
+        }
+    }
+
+    private func removeSpaceObserver() {
+        if let observer = spaceObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(observer)
+            spaceObserver = nil
         }
     }
 
@@ -288,10 +373,7 @@ final class WallpaperManager: ObservableObject {
             forName: NSWindow.didChangeOcclusionStateNotification,
             object: controller.panel,
             queue: .main
-        ) { _ in
-            // Desktop-level windows are automatically deprioritized by the
-            // compositor when fully occluded. No manual pause needed.
-        }
+        ) { _ in }
         occlusionObservers.append(observer)
     }
 }
