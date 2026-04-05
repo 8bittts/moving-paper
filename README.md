@@ -24,7 +24,9 @@ The name is literal: it's your wallpaper, but it moves. Moving (Wall) Paper. **M
 
 ## Download
 
-<!-- download-link -->[**Download Moving Paper v0.002**](https://github.com/8bittts/moving-paper/releases/download/v0.002/MovingPaper-0.002.dmg)<!-- /download-link -->
+<!-- download-link -->
+[**Download Moving Paper v0.002**](https://github.com/8bittts/moving-paper/releases/download/v0.002/MovingPaper-0.002.dmg)
+<!-- /download-link -->
 
 Open the `.dmg`, drag **Moving Paper** to Applications, launch it. Look for the pixel art icon in your menu bar -- that's it, you're done.
 

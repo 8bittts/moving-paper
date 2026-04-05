@@ -422,10 +422,20 @@ DMG_FILENAME="${APP_NAME}-${VERSION}.dmg"
 DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/download/v${VERSION}/${DMG_FILENAME}"
 
 if [ -f README.md ]; then
-    # Update the download badge/link line (matches the <!-- download-link --> marker)
-    /usr/bin/sed -i '' "s|<!-- download-link -->.*<!-- /download-link -->|<!-- download-link -->[**Download Moving Paper v${VERSION}**](${DOWNLOAD_URL})<!-- /download-link -->|g" README.md
-    # Update the version badge
-    /usr/bin/sed -i '' "s|<!-- version-badge -->.*<!-- /version-badge -->|<!-- version-badge -->v${VERSION}<!-- /version-badge -->|g" README.md
+    # Update the download link block (multi-line between markers)
+    python3 -c "
+import re, sys
+text = open('README.md').read()
+text = re.sub(
+    r'<!-- download-link -->.*?<!-- /download-link -->',
+    '<!-- download-link -->\n[**Download Moving Paper v${VERSION}**](${DOWNLOAD_URL})\n<!-- /download-link -->',
+    text, flags=re.DOTALL)
+text = re.sub(
+    r'<!-- version-badge -->.*?<!-- /version-badge -->',
+    '<!-- version-badge -->v${VERSION}<!-- /version-badge -->',
+    text)
+open('README.md', 'w').write(text)
+"
     step "README.md updated with v${VERSION} download link"
 fi
 
