@@ -145,7 +145,8 @@ Download the DMG, open it, and drag Moving Paper.app to /Applications.
 
 **SHA-256:** $(cat "$SHA_FILE")" \
     "$DMG_FILE" \
-    "$SHA_FILE"
+    "$SHA_FILE" \
+    "dist/appcast.xml"
 ```
 
 Verify:
