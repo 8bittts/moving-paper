@@ -10,3 +10,4 @@ DerivedData/
 *.xcodeproj/project.xcworkspace/xcuserdata/
 CLAUDE.md
 AGENTS.md
+.claude/commands/

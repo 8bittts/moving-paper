@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <!-- version-badge -->v0.004<!-- /version-badge --> · macOS 15+ · Swift 6 · MIT
+  <!-- version-badge -->v0.005<!-- /version-badge --> · macOS 15+ · Swift 6 · MIT
 </p>
 
 ---
@@ -25,12 +25,12 @@ The name is literal: it's your wallpaper, but it moves. Moving (Wall) Paper. **M
 ## Download
 
 <!-- download-link -->
-[**Download Moving Paper v0.004**](https://github.com/8bittts/moving-paper/releases/download/v0.004/MovingPaper-0.004.dmg)
+[**Download Moving Paper v0.005**](https://github.com/8bittts/moving-paper/releases/download/v0.005/MovingPaper-0.005.dmg)
 <!-- /download-link -->
 
 Open the `.dmg`, drag **Moving Paper** to Applications, launch it. Look for the night sky icon in your menu bar -- that's it.
 
-> Code-signed and notarized. If macOS warns you, right-click the app and choose "Open".
+> Code-signed with Developer ID and notarized by Apple. Auto-updates via Sparkle (EdDSA-signed appcast).
 
 ---
 
@@ -49,7 +49,7 @@ Plays a looping video or GIF as your desktop background. Icons, right-click menu
 - **Sound control** -- mute or unmute video audio (muted by default)
 - **Multi-monitor** -- auto-detects displays, rebuilds on hot-plug
 - **Power-aware** -- pauses on Low Power Mode and thermal throttling
-- **Auto-updates** -- built-in Sparkle updater
+- **Auto-updates** -- checks hourly via Sparkle, EdDSA-verified
 - **Menu bar only** -- no Dock icon, no clutter
 
 ## Menu
@@ -81,11 +81,12 @@ swift run MovingPaper
 
 ```bash
 swift test                         # 20 tests
-./scripts/build-dmg.sh             # build + sign + DMG + notarize
-./scripts/build-dmg.sh --local     # skip notarization
+./scripts/build-dmg.sh             # build + sign + DMG + notarize + appcast
+./scripts/build-dmg.sh --local     # sign + DMG, skip notarization
+./scripts/build-dmg.sh --unsigned  # ad-hoc sign, no Developer ID
 ```
 
-Version auto-increments on each build (`0.001` -> `0.002` -> ...).
+Version auto-increments on each release build (`0.001` -> `0.002` -> ...). The build script generates an EdDSA-signed `appcast.xml` for Sparkle auto-updates.
 
 ---
 
@@ -103,7 +104,8 @@ A borderless `NSPanel` at `desktopWindow + 1` sits above the system wallpaper bu
 | Video | AVFoundation (`AVQueuePlayer`, `AVPlayerLooper`) |
 | GIF | ImageIO (`CGAnimateImageAtURLWithBlock`) |
 | Desktop tracking | CoreGraphics (`CGSGetActiveSpace`) |
-| Updates | [Sparkle](https://sparkle-project.org) (EdDSA, vendored) |
+| Updates | [Sparkle](https://sparkle-project.org) (EdDSA-signed appcast, vendored) |
+| Signing | Developer ID + Apple notarization |
 
 ## Contributing
 

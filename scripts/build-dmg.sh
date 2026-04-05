@@ -123,7 +123,7 @@ resolve_signing_identity
 
 # ── Notarization ─────────────────────────────────────────────────────────────
 
-NOTARY_PROFILE="${MOVINGPAPER_NOTARY_PROFILE:-MovingPaper-Notarization}"
+NOTARY_PROFILE="${MOVINGPAPER_NOTARY_PROFILE:-YEN-Notarization}"
 
 can_notarize() {
     [ "$BUILD_ONLY" = false ] && [ "$LOCAL_MODE" = false ] && [ "$UNSIGNED" = false ] \
@@ -236,7 +236,7 @@ cat > "${CONTENTS}/Info.plist" <<PLIST
     <key>SUFeedURL</key>
     <string>${SPARKLE_FEED_URL:-https://github.com/${GITHUB_REPO}/releases/latest/download/appcast.xml}</string>
     <key>SUPublicEDKey</key>
-    <string>${SPARKLE_PUBLIC_ED_KEY:-}</string>
+    <string>${SPARKLE_PUBLIC_ED_KEY:-0Gr0zoQweDjkOPIj9VSnNZzlTSTrnHlHnAIcwaXbmkU=}</string>
     <key>SUScheduledCheckInterval</key>
     <integer>3600</integer>
 </dict>
@@ -496,6 +496,21 @@ text = re.sub(
 open('README.md', 'w').write(text)
 "
     step "README.md updated with v${VERSION} download link"
+fi
+
+# ── Step 10: Generate appcast ────────────────────────────────────────────────
+
+APPCAST_SCRIPT="$(dirname "$0")/generate-appcast.sh"
+if [ -f "$APPCAST_SCRIPT" ] && [ "$BUILD_ONLY" = false ]; then
+    info "Generating appcast"
+    bash "$APPCAST_SCRIPT"
+    step "Appcast generated: ${DIST_DIR}/appcast.xml"
+else
+    if [ "$BUILD_ONLY" = true ]; then
+        step "Skipping appcast (--build-only)"
+    else
+        warn "Appcast script not found at ${APPCAST_SCRIPT}"
+    fi
 fi
 
 # ── Summary ──────────────────────────────────────────────────────────────────
