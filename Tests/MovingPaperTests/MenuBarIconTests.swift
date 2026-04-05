@@ -5,11 +5,11 @@ import AppKit
 /// Replicates the pixel-drawing logic from MenuBarIcon to validate the approach.
 struct MenuBarIconTests {
 
-    /// Generates an icon using the same approach as MenuBarIcon.folderFilm()
+    /// Generates an icon using the same approach as MenuBarIcon.brandIcon()
     @MainActor
     private func generateIcon(size: CGFloat) -> NSImage {
         let gridW = 16
-        let gridH = 14
+        let gridH = 16
         let scale = size / CGFloat(gridW)
 
         let image = NSImage(size: NSSize(width: CGFloat(gridW) * scale, height: CGFloat(gridH) * scale))

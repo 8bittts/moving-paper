@@ -16,7 +16,7 @@ final class StatusBarController {
 
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = item.button {
-            let icon = MenuBarIcon.folderFilm()
+            let icon = MenuBarIcon.brandIcon()
             icon.accessibilityDescription = "Moving Paper"
             button.image = icon
         }
