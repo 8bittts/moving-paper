@@ -32,7 +32,9 @@ enum MenuBarIcon {
 
     private static func resized(_ source: NSImage) -> NSImage {
         let image = NSImage(size: menuBarSize, flipped: false) { rect in
-            let path = NSBezierPath(roundedRect: rect, xRadius: 5, yRadius: 5)
+            NSGraphicsContext.current?.imageInterpolation = .high
+            NSGraphicsContext.current?.shouldAntialias = true
+            let path = NSBezierPath(roundedRect: rect, xRadius: 7, yRadius: 7)
             path.addClip()
             source.draw(in: rect)
             return true
