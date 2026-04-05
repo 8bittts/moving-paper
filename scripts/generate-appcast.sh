@@ -76,7 +76,7 @@ step "EdDSA signature: ${ed_signature:0:40}..."
 
 # ── Publication date ─────────────────────────────────────────────────────────
 
-pub_date="$(date -R)"
+pub_date="$(date -u '+%a, %d %b %Y %H:%M:%S +0000')"
 
 # ── Generate appcast XML ────────────────────────────────────────────────────
 

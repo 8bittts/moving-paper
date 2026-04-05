@@ -320,19 +320,17 @@ DMG_WIN_RIGHT_JIGGLE=$((DMG_WIN_RIGHT - 10))
 DMG_WIN_BOTTOM_JIGGLE=$((DMG_WIN_BOTTOM - 10))
 
 mkdir -p "$DMG_STAGING"
-cp -R "$APP_BUNDLE" "$DMG_STAGING/"
+cp -R "$APP_BUNDLE" "$DMG_STAGING/Moving Paper.app"
 ln -s /Applications "$DMG_STAGING/Applications"
 
 # Prepare background image (must be opaque RGB -- Finder silently fails with RGBA)
 if [ -f "$DMG_BG_SOURCE" ]; then
     # Flatten alpha to black background and resize to match DMG window (2x for Retina)
     sips -s format png --setProperty formatOptions 100 "$DMG_BG_SOURCE" --out "$DMG_BG_OPAQUE" --resampleWidth $((DMG_WIN_WIDTH * 2)) >/dev/null 2>&1
-    # Remove alpha channel by re-encoding without alpha
-    python3 -c "
-import subprocess, sys
-# sips flatten: composite onto black, strip alpha
-subprocess.run(['sips', '-s', 'hasAlpha', 'false', '$DMG_BG_OPAQUE'], capture_output=True)
-" 2>/dev/null
+    # Remove alpha channel via JPEG round-trip (sips -s hasAlpha is broken)
+    sips -s format jpeg "$DMG_BG_OPAQUE" --out "${DMG_BG_OPAQUE%.png}.jpg" >/dev/null 2>&1
+    sips -s format png "${DMG_BG_OPAQUE%.png}.jpg" --out "$DMG_BG_OPAQUE" >/dev/null 2>&1
+    /bin/rm -f "${DMG_BG_OPAQUE%.png}.jpg"
     mkdir -p "$DMG_STAGING/.background"
     cp "$DMG_BG_OPAQUE" "$DMG_STAGING/.background/background.png"
     step "Prepared DMG background (opaque RGB)"
@@ -389,7 +387,7 @@ tell application "Finder"
         set icon size of theViewOptions to ${DMG_ICON_SIZE}
         set text size of theViewOptions to 14
         $BG_CMD
-        set position of item "${APP_NAME}.app" of container window to {200, 200}
+        set position of item "Moving Paper.app" of container window to {200, 200}
         set position of item "Applications" of container window to {460, 200}
         try
             set position of item ".background" of container window to {330, 900}

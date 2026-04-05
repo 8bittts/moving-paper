@@ -62,13 +62,21 @@ final class WallpaperManager: ObservableObject {
     private var controllers: [CGDirectDisplayID: WallpaperWindowController] = [:]
     private var screenObserver: Any?
     private var spaceObserver: Any?
-    private var occlusionObservers: [Any] = []
     private var powerObservers: [Any] = []
     private var systemPaused: Bool = false
     private var activeSpaceID: UInt64 = 0
 
+    // MARK: - Persistence Keys
+
+    private enum Defaults {
+        static let desktopFiles = "desktopFiles"
+        static let mode = "wallpaperMode"
+        static let isMuted = "isMuted"
+    }
+
     init() {
         activeSpaceID = currentSpaceID()
+        restoreState()
         observeScreenChanges()
         observeSpaceChanges()
         observePowerState()
@@ -163,6 +171,7 @@ final class WallpaperManager: ObservableObject {
             }
         }
 
+        saveState()
         rebuildAllWindows()
     }
 
@@ -177,12 +186,14 @@ final class WallpaperManager: ObservableObject {
         if let controller = controllers.removeValue(forKey: displayID) {
             controller.close()
         }
+        saveState()
     }
 
     /// Remove all wallpapers.
     func clearAllWallpapers() {
         desktopFiles.removeAll()
         tearDownWindows()
+        saveState()
     }
 
     /// Switch modes.
@@ -207,6 +218,7 @@ final class WallpaperManager: ObservableObject {
         }
 
         mode = newMode
+        saveState()
         rebuildAllWindows()
     }
 
@@ -221,7 +233,50 @@ final class WallpaperManager: ObservableObject {
 
     func toggleMute() {
         isMuted.toggle()
+        saveState()
         rebuildAllWindows()
+    }
+
+    // MARK: - Persistence
+
+    private func saveState() {
+        let encoded: [[String: Any]] = desktopFiles.map { (key, url) in
+            [
+                "displayID": NSNumber(value: key.displayID),
+                "spaceID": NSNumber(value: key.spaceID),
+                "path": url.path(percentEncoded: false),
+            ]
+        }
+        UserDefaults.standard.set(encoded, forKey: Defaults.desktopFiles)
+        UserDefaults.standard.set(mode.rawValue, forKey: Defaults.mode)
+        UserDefaults.standard.set(isMuted, forKey: Defaults.isMuted)
+    }
+
+    private func restoreState() {
+        if let raw = UserDefaults.standard.string(forKey: Defaults.mode),
+           let savedMode = WallpaperMode(rawValue: raw) {
+            mode = savedMode
+        }
+        isMuted = UserDefaults.standard.object(forKey: Defaults.isMuted) as? Bool ?? true
+
+        guard let entries = UserDefaults.standard.array(forKey: Defaults.desktopFiles)
+                as? [[String: Any]] else { return }
+
+        for entry in entries {
+            guard let displayIDNum = entry["displayID"] as? NSNumber,
+                  let spaceIDNum = entry["spaceID"] as? NSNumber,
+                  let path = entry["path"] as? String else { continue }
+            guard FileManager.default.fileExists(atPath: path) else { continue }
+            let key = DesktopKey(
+                displayID: displayIDNum.uint32Value,
+                spaceID: spaceIDNum.uint64Value
+            )
+            desktopFiles[key] = URL(filePath: path)
+        }
+
+        if !desktopFiles.isEmpty {
+            rebuildAllWindows()
+        }
     }
 
     // MARK: - Window Lifecycle
@@ -245,7 +300,6 @@ final class WallpaperManager: ObservableObject {
             }
 
             controllers[displayID] = controller
-            observeOcclusion(for: controller)
         }
     }
 
@@ -264,7 +318,6 @@ final class WallpaperManager: ObservableObject {
             controller.close()
         }
         controllers.removeAll()
-        occlusionObservers.removeAll()
     }
 
     // MARK: - Screen Changes
@@ -312,7 +365,6 @@ final class WallpaperManager: ObservableObject {
             Task { @MainActor in
                 guard let self else { return }
                 self.activeSpaceID = currentSpaceID()
-                // Rebuild to show the wallpaper assigned to this space
                 self.rebuildAllWindows()
             }
         }
@@ -333,9 +385,7 @@ final class WallpaperManager: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            Task { @MainActor in
-                self?.evaluatePowerState()
-            }
+            Task { @MainActor in self?.evaluatePowerState() }
         }
         powerObservers.append(lowPower)
 
@@ -344,9 +394,7 @@ final class WallpaperManager: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            Task { @MainActor in
-                self?.evaluatePowerState()
-            }
+            Task { @MainActor in self?.evaluatePowerState() }
         }
         powerObservers.append(thermal)
     }
@@ -368,14 +416,6 @@ final class WallpaperManager: ObservableObject {
         }
     }
 
-    private func observeOcclusion(for controller: WallpaperWindowController) {
-        let observer = NotificationCenter.default.addObserver(
-            forName: NSWindow.didChangeOcclusionStateNotification,
-            object: controller.panel,
-            queue: .main
-        ) { _ in }
-        occlusionObservers.append(observer)
-    }
 }
 
 // MARK: - Helpers

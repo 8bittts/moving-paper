@@ -62,7 +62,13 @@ final class GIFAnimationNSView: NSView {
                 stop.pointee = true
                 return
             }
-            self.imageLayer?.contents = cgImage
+            if Thread.isMainThread {
+                self.imageLayer?.contents = cgImage
+            } else {
+                DispatchQueue.main.async { [weak self] in
+                    self?.imageLayer?.contents = cgImage
+                }
+            }
         }
     }
 

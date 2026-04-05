@@ -24,31 +24,17 @@ final class StatusBarController {
 
         rebuildMenu()
 
-        // Rebuild menu when any relevant state changes
-        wallpaperManager.$desktopFiles
-            .receive(on: RunLoop.main)
-            .sink { [weak self] _ in self?.rebuildMenu() }
-            .store(in: &cancellables)
-
-        wallpaperManager.$isPaused
-            .receive(on: RunLoop.main)
-            .sink { [weak self] _ in self?.rebuildMenu() }
-            .store(in: &cancellables)
-
-        wallpaperManager.$isMuted
-            .receive(on: RunLoop.main)
-            .sink { [weak self] _ in self?.rebuildMenu() }
-            .store(in: &cancellables)
-
-        wallpaperManager.$mode
-            .receive(on: RunLoop.main)
-            .sink { [weak self] _ in self?.rebuildMenu() }
-            .store(in: &cancellables)
-
-        updater.$canCheckForUpdates
-            .receive(on: RunLoop.main)
-            .sink { [weak self] _ in self?.rebuildMenu() }
-            .store(in: &cancellables)
+        // Rebuild menu when any relevant state changes (debounced, skip initial emissions)
+        Publishers.MergeMany(
+            wallpaperManager.$desktopFiles.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            wallpaperManager.$isPaused.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            wallpaperManager.$isMuted.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            wallpaperManager.$mode.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            updater.$canCheckForUpdates.dropFirst().map { _ in () }.eraseToAnyPublisher()
+        )
+        .debounce(for: .milliseconds(50), scheduler: RunLoop.main)
+        .sink { [weak self] in self?.rebuildMenu() }
+        .store(in: &cancellables)
     }
 
     private func rebuildMenu() {
@@ -184,46 +170,49 @@ final class StatusBarController {
         }
 
         for (index, display) in displays.enumerated() {
-            let displayMenu = NSMenu()
+            // Desktop header (disabled label)
+            let label = displays.count > 1 ? "Desktop \(index + 1) — \(display.name)" : "Desktop 1"
+            let headerItem = NSMenuItem(title: label, action: nil, keyEquivalent: "")
+            headerItem.isEnabled = false
+            menu.addItem(headerItem)
 
             if let fileName = wallpaperManager.fileName(for: display.id) {
-                let fileItem = NSMenuItem(title: fileName, action: nil, keyEquivalent: "")
+                // Show current wallpaper filename with indent
+                let fileItem = NSMenuItem(title: "  \(fileName)", action: nil, keyEquivalent: "")
                 fileItem.isEnabled = false
-                displayMenu.addItem(fileItem)
-                displayMenu.addItem(.separator())
+                menu.addItem(fileItem)
+
+                let chooseItem = NSMenuItem(
+                    title: "  Choose File...",
+                    action: #selector(chooseFileForDisplay(_:)),
+                    keyEquivalent: ""
+                )
+                chooseItem.target = self
+                chooseItem.tag = Int(display.id)
+                menu.addItem(chooseItem)
 
                 let removeItem = NSMenuItem(
-                    title: "Remove",
+                    title: "  Remove",
                     action: #selector(clearDisplayWallpaper(_:)),
                     keyEquivalent: ""
                 )
                 removeItem.target = self
                 removeItem.tag = Int(display.id)
-                displayMenu.addItem(removeItem)
-
-                displayMenu.addItem(.separator())
+                menu.addItem(removeItem)
+            } else {
+                let chooseItem = NSMenuItem(
+                    title: "  Choose File...",
+                    action: #selector(chooseFileForDisplay(_:)),
+                    keyEquivalent: ""
+                )
+                chooseItem.target = self
+                chooseItem.tag = Int(display.id)
+                menu.addItem(chooseItem)
             }
 
-            let chooseItem = NSMenuItem(
-                title: "Choose File...",
-                action: #selector(chooseFileForDisplay(_:)),
-                keyEquivalent: ""
-            )
-            chooseItem.target = self
-            chooseItem.tag = Int(display.id)
-            displayMenu.addItem(chooseItem)
-
-            let hasFile = wallpaperManager.fileURL(for: display.id) != nil
-            let indicator = hasFile ? ">" : " "
-            let displayTitle = "\(display.name) \(indicator)"
-            let displayItem = NSMenuItem(title: displayTitle, action: nil, keyEquivalent: "")
-            displayItem.submenu = displayMenu
-
-            if index < 9 {
-                displayItem.keyEquivalent = "\(index + 1)"
+            if index < displays.count - 1 {
+                menu.addItem(.separator())
             }
-
-            menu.addItem(displayItem)
         }
 
         if wallpaperManager.hasAnyWallpaper {

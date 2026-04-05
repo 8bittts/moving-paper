@@ -31,6 +31,9 @@ final class WallpaperWindowController {
     }
 
     func close() {
+        hostingView?.removeFromSuperview()
+        hostingView = nil
         panel.orderOut(nil)
+        panel.close()
     }
 }
