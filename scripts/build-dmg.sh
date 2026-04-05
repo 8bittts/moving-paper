@@ -306,61 +306,120 @@ info "Creating DMG"
 DMG_STAGING="${BUILD_DIR}/dmg-staging"
 DMG_RW="${BUILD_DIR}/${APP_NAME}-rw.dmg"
 DMG_FINAL="${DIST_DIR}/${APP_NAME}-${VERSION}.dmg"
+DMG_BG_SOURCE="brand/moving-paper-dmg-background.png"
+DMG_BG_OPAQUE="${BUILD_DIR}/dmg-background-opaque.png"
+
+# DMG layout constants (background is 2062x1080, window is ~660x400)
+DMG_WIN_LEFT=200
+DMG_WIN_TOP=200
+DMG_WIN_WIDTH=660
+DMG_WIN_HEIGHT=400
+DMG_WIN_RIGHT=$((DMG_WIN_LEFT + DMG_WIN_WIDTH))
+DMG_WIN_BOTTOM=$((DMG_WIN_TOP + DMG_WIN_HEIGHT))
+DMG_WIN_RIGHT_JIGGLE=$((DMG_WIN_RIGHT - 10))
+DMG_WIN_BOTTOM_JIGGLE=$((DMG_WIN_BOTTOM - 10))
 
 mkdir -p "$DMG_STAGING"
 cp -R "$APP_BUNDLE" "$DMG_STAGING/"
 ln -s /Applications "$DMG_STAGING/Applications"
 
-# Create writable DMG
+# Prepare background image (must be opaque RGB -- Finder silently fails with RGBA)
+if [ -f "$DMG_BG_SOURCE" ]; then
+    # Flatten alpha to black background and resize to match DMG window (2x for Retina)
+    sips -s format png --setProperty formatOptions 100 "$DMG_BG_SOURCE" --out "$DMG_BG_OPAQUE" --resampleWidth $((DMG_WIN_WIDTH * 2)) >/dev/null 2>&1
+    # Remove alpha channel by re-encoding without alpha
+    python3 -c "
+import subprocess, sys
+# sips flatten: composite onto black, strip alpha
+subprocess.run(['sips', '-s', 'hasAlpha', 'false', '$DMG_BG_OPAQUE'], capture_output=True)
+" 2>/dev/null
+    mkdir -p "$DMG_STAGING/.background"
+    cp "$DMG_BG_OPAQUE" "$DMG_STAGING/.background/background.png"
+    step "Prepared DMG background (opaque RGB)"
+fi
+
+# Create writable DMG (HFS+ for Finder layout persistence)
 hdiutil create -srcfolder "$DMG_STAGING" \
     -volname "$DMG_VOLUME_NAME" \
     -fs HFS+ \
+    -fsargs "-c c=64,a=16,e=16" \
     -format UDRW \
     -ov "$DMG_RW" \
     -quiet
 
-# Mount and customize layout via AppleScript
-DMG_MOUNT=$(hdiutil attach "$DMG_RW" -nobrowse -noverify | grep "/Volumes/" | sed 's/.*\/Volumes/\/Volumes/')
+# Mount for layout customization
+DMG_MOUNT=$(hdiutil attach "$DMG_RW" -readwrite -noverify -noautoopen -nobrowse 2>&1 | grep "/Volumes/" | /usr/bin/sed 's/.*\/Volumes/\/Volumes/')
 
 if [ -n "$DMG_MOUNT" ]; then
     step "Mounted at ${DMG_MOUNT}"
 
-    # Set volume icon if .icns exists
-    if [ -f "$ICNS_FILE" ]; then
-        cp "$ICNS_FILE" "${DMG_MOUNT}/.VolumeIcon.icns"
-        SetFile -c icnC "${DMG_MOUNT}/.VolumeIcon.icns" 2>/dev/null || true
-        SetFile -a C "${DMG_MOUNT}" 2>/dev/null || true
+    # Clean up metadata that interferes with Finder layout
+    /bin/rm -rf "${DMG_MOUNT}/.fseventsd" 2>/dev/null || true
+    /bin/rm -f "${DMG_MOUNT}/.metadata_never_index" 2>/dev/null || true
+    /bin/rm -f "${DMG_MOUNT}/.VolumeIcon.icns" 2>/dev/null || true
+
+    # Hide .background folder
+    if [ -d "${DMG_MOUNT}/.background" ]; then
+        chflags hidden "${DMG_MOUNT}/.background" 2>/dev/null || true
+        SetFile -a V "${DMG_MOUNT}/.background" 2>/dev/null || true
     fi
 
-    # Configure DMG window appearance
-    osascript <<APPLESCRIPT
+    # Build background AppleScript command
+    BG_CMD=""
+    if [ -f "${DMG_MOUNT}/.background/background.png" ]; then
+        BG_CMD='set background picture of theViewOptions to file ".background:background.png"'
+    fi
+
+    # Configure DMG window appearance with background and icon positions
+    DMG_MOUNT_NAME=$(basename "$DMG_MOUNT")
+    osascript <<EOF >/dev/null 2>&1 || true
+set dmgDiskName to "$DMG_MOUNT_NAME"
 tell application "Finder"
-    tell disk "${DMG_VOLUME_NAME}"
+    tell disk dmgDiskName
         open
-        set current view of container window to icon view
-        set toolbar visible of container window to false
-        set statusbar visible of container window to false
-
-        set the bounds of container window to {200, 200, $((200 + DMG_WINDOW_WIDTH)), $((200 + DMG_WINDOW_HEIGHT))}
-
-        set viewOptions to the icon view options of container window
-        set icon size of viewOptions to ${DMG_ICON_SIZE}
-        set arrangement of viewOptions to not arranged
-
-        set position of item "${APP_NAME}.app" of container window to {140, 180}
-        set position of item "Applications" of container window to {400, 180}
-
+        delay 1
+        tell container window
+            set current view to icon view
+            set toolbar visible to false
+            set statusbar visible to false
+            set bounds to {${DMG_WIN_LEFT}, ${DMG_WIN_TOP}, ${DMG_WIN_RIGHT}, ${DMG_WIN_BOTTOM}}
+        end tell
+        set theViewOptions to the icon view options of container window
+        set arrangement of theViewOptions to not arranged
+        set icon size of theViewOptions to ${DMG_ICON_SIZE}
+        set text size of theViewOptions to 14
+        $BG_CMD
+        set position of item "${APP_NAME}.app" of container window to {200, 200}
+        set position of item "Applications" of container window to {460, 200}
+        try
+            set position of item ".background" of container window to {330, 900}
+        end try
+        try
+            set position of item ".fseventsd" of container window to {330, 950}
+        end try
+        try
+            set selection to {}
+        end try
         close
+        delay 1
         open
+        tell container window
+            set statusbar visible to false
+            set bounds to {${DMG_WIN_LEFT}, ${DMG_WIN_TOP}, ${DMG_WIN_RIGHT_JIGGLE}, ${DMG_WIN_BOTTOM_JIGGLE}}
+        end tell
+        delay 1
+        tell container window
+            set bounds to {${DMG_WIN_LEFT}, ${DMG_WIN_TOP}, ${DMG_WIN_RIGHT}, ${DMG_WIN_BOTTOM}}
+        end tell
         delay 1
         close
     end tell
 end tell
-APPLESCRIPT
-    step "Applied DMG layout"
+EOF
+    step "Applied DMG layout with background"
 
     # Unmount
-    hdiutil detach "$DMG_MOUNT" -quiet
+    hdiutil detach "$DMG_MOUNT" -quiet || hdiutil detach "$DMG_MOUNT" -force -quiet || true
 fi
 
 # Compress to final DMG
