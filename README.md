@@ -18,7 +18,7 @@
 
 Your desktop is yours. Why should it be a static photo?
 
-MovingPaper turns your background into something alive -- a looping video, an animated GIF, a YouTube clip, or a random video from your Photos library. Everything else works exactly the same: icons, right-click menus, drag-and-drop, all of it. The animation just sits underneath.
+MovingPaper turns your background into something alive, like a looping video, an animated GIF, a YouTube clip, or a random video from your Apple Photos library. Everything else works exactly the same: Icons, right-click menus, drag-and-drop, all of it. Your Moving (Wall) Paper animation sits underneath. I call it *MovingPaper*.
 
 **A few ways people use it:**
 
