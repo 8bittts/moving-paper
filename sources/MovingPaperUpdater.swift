@@ -1,5 +1,5 @@
+import AppKit
 import Combine
-import Foundation
 @preconcurrency import Sparkle
 
 /// Sparkle auto-updater wrapper for MovingPaper.
@@ -32,7 +32,7 @@ final class MovingPaperUpdater: NSObject, ObservableObject {
         let controller = SPUStandardUpdaterController(
             startingUpdater: false,
             updaterDelegate: self,
-            userDriverDelegate: nil
+            userDriverDelegate: self
         )
         self.updaterController = controller
 
@@ -100,5 +100,29 @@ extension MovingPaperUpdater: @preconcurrency SPUUpdaterDelegate {
     func updater(_ updater: SPUUpdater, didAbortWithError error: any Error) {
         guard case .checking = status else { return }
         status = .error(message: (error as NSError).localizedDescription)
+    }
+}
+
+// MARK: - SPUStandardUserDriverDelegate
+
+@MainActor
+extension MovingPaperUpdater: @preconcurrency SPUStandardUserDriverDelegate {
+
+    func standardUserDriverWillShowModalAlert() {
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate()
+    }
+
+    func standardUserDriverDidShowModalAlert() {
+        NSApp.setActivationPolicy(.accessory)
+    }
+
+    func standardUserDriverWillHandleShowingUpdate(_ handleShowingUpdate: Bool, forUpdate update: SUAppcastItem, state: SPUUserUpdateState) {
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate()
+    }
+
+    func standardUserDriverWillFinishUpdateSession() {
+        NSApp.setActivationPolicy(.accessory)
     }
 }
