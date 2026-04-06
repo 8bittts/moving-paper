@@ -2,7 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     var body: some View {
-        Text("Moving Paper Settings")
+        Text("MovingPaper Settings")
             .frame(width: 300, height: 200)
             .padding()
     }

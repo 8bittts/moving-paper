@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 #
-# generate-appcast.sh — Generate a Sparkle appcast.xml for Moving Paper.
+# generate-appcast.sh — Generate a Sparkle appcast.xml for MovingPaper.
 #
 # Usage:
 #   ./scripts/generate-appcast.sh
 #
-# Reads version/build from the built app bundle in dist/, signs the DMG
-# with Sparkle's EdDSA tool, and outputs dist/appcast.xml.
+# Reads version/build from the built app bundle in build/, signs the DMG
+# with Sparkle's EdDSA tool, and outputs build/appcast.xml.
 #
 # Environment:
 #   MOVINGPAPER_APPCAST_DOWNLOAD_BASE   Override base URL for DMG download
@@ -20,13 +20,13 @@ cd "$REPO_ROOT"
 # ── Constants ────────────────────────────────────────────────────────────────
 
 APP_NAME="MovingPaper"
-GITHUB_REPO="8bittts/moving-paper"
+GITHUB_REPO="8bittts/movingpaper"
 SIGN_TOOL="tools/sparkle/bin/sign_update"
 PLIST_BUDDY="/usr/libexec/PlistBuddy"
 
-APP_BUNDLE="dist/${APP_NAME}.app"
+APP_BUNDLE="build/${APP_NAME}.app"
 INFO_PLIST="${APP_BUNDLE}/Contents/Info.plist"
-OUTPUT="dist/appcast.xml"
+OUTPUT="build/appcast.xml"
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -46,11 +46,11 @@ BUILD_NUMBER="$("$PLIST_BUDDY" -c 'Print :CFBundleVersion' "$INFO_PLIST")"
 MIN_MACOS="$("$PLIST_BUDDY" -c 'Print :LSMinimumSystemVersion' "$INFO_PLIST")"
 
 DMG_FILENAME="${APP_NAME}-${VERSION}.dmg"
-DMG_PATH="dist/${DMG_FILENAME}"
+DMG_PATH="build/${DMG_FILENAME}"
 
 [ -f "$DMG_PATH" ] || fail "DMG not found at $DMG_PATH"
 
-info "Generating appcast for Moving Paper v${VERSION} (build ${BUILD_NUMBER})"
+info "Generating appcast for MovingPaper v${VERSION} (build ${BUILD_NUMBER})"
 
 # ── Download URL ─────────────────────────────────────────────────────────────
 
@@ -99,7 +99,7 @@ release_notes_html() {
 <h2>What's New</h2>
 <ul>
 $(printf '%b' "$items")</ul>
-<p class="footer">Moving Paper ${ver} -- your desktop, alive.</p>
+<p class="footer">MovingPaper ${ver} -- your desktop, alive.</p>
 HTML
 }
 
@@ -187,11 +187,11 @@ cat > "$OUTPUT" <<APPCAST
      xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle"
      xmlns:dc="http://purl.org/dc/elements/1.1/">
     <channel>
-        <title>Moving Paper Updates</title>
-        <description>Moving Paper update feed.</description>
+        <title>MovingPaper Updates</title>
+        <description>MovingPaper update feed.</description>
         <language>en</language>
         <item>
-            <title>Moving Paper ${VERSION}</title>
+            <title>MovingPaper ${VERSION}</title>
             <sparkle:version>${BUILD_NUMBER}</sparkle:version>
             <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>${MIN_MACOS}</sparkle:minimumSystemVersion>

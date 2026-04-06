@@ -1,15 +1,15 @@
 <p align="center">
-  <img src="brand/moving-paper.png" alt="Moving Paper" width="200">
+  <img src="build/movingpaper.png" alt="MovingPaper" width="200">
 </p>
 
-<h1 align="center">Moving Paper</h1>
+<h1 align="center">MovingPaper</h1>
 
 <p align="center">
   A moving (wall)paper for your desktop.
 </p>
 
 <p align="center">
-  <!-- version-badge -->v0.013<!-- /version-badge --> · macOS 15+ · Swift 6 · MIT
+  <!-- version-badge -->v0.015<!-- /version-badge --> · macOS 15+ · Swift 6 · MIT
 </p>
 
 ---
@@ -18,17 +18,17 @@
 
 I just wanted a simple way to animate my wallpaper while I code. No bloated app, no subscription, no electron wrapper; just a fully native macOS menu bar utility that plays a video or GIF behind my desktop windows. That's it. That's the whole project. Magic.
 
-The name is literal: It's your wallpaper, but it moves. Moving (Wall) Paper. **Moving Paper**.
+The name is literal: It's your wallpaper, but it moves. Moving (Wall) Paper. **MovingPaper**.
 
 ---
 
 ## Download
 
 <!-- download-link -->
-[**Download Moving Paper v0.013**](https://github.com/8bittts/moving-paper/releases/download/v0.013/MovingPaper-0.013.dmg)
+[**Download MovingPaper v0.015**](https://github.com/8bittts/movingpaper/releases/download/v0.015/MovingPaper-0.015.dmg)
 <!-- /download-link -->
 
-Open the `.dmg`, drag **Moving Paper** to Applications, launch it. Look for the night sky icon in your menu bar -- that's it.
+Open the `.dmg`, drag **MovingPaper** to Applications, launch it. Look for the night sky icon in your menu bar -- that's it.
 
 > Code-signed with Developer ID and notarized by Apple. Auto-updates via Sparkle (EdDSA-signed appcast).
 
@@ -43,9 +43,11 @@ Plays a looping video or GIF as your desktop background. Icons, right-click menu
 | Video  | `.mp4`, `.mov`, `.m4v` | Seamless looping, HEVC with alpha |
 | GIF    | `.gif` | Native frame timing |
 | YouTube | URL paste | Downloads via yt-dlp, plays as local MP4 |
+| Photos | Picker or Shuffle | Pick a video from your library, or shuffle a random one |
 
 ## Features
 
+- **Photos library** -- pick a video from Photos, or shuffle a random video from your entire library
 - **YouTube wallpapers** -- paste a YouTube URL, video downloads and loops as your wallpaper
 - **Per-desktop wallpapers** -- different wallpaper on each macOS Space and monitor, like native macOS
 - **Sound control** -- mute or unmute video audio (muted by default)
@@ -61,13 +63,15 @@ Plays a looping video or GIF as your desktop background. Icons, right-click menu
 |------|---|
 | **Choose File...** | Pick a `.gif`, `.mp4`, `.mov`, or `.m4v` |
 | **Paste YouTube URL...** | Download a YouTube video as wallpaper |
+| **Choose from Photos...** | Pick a video from your Photos library |
+| **Shuffle from Photos** | Random video from your entire library |
 | **Sound: Off / On** | Toggle video audio |
 | **Wallpaper Mode** | All Desktops or Per Desktop |
 | **Pause / Resume** | Stop or restart playback |
 | **Remove Wallpaper** | Clear wallpaper |
 | **Check for Updates...** | Sparkle update check |
 | **Built with YEN** | Visit yen.chat |
-| **Quit Moving Paper** | Exit |
+| **Quit MovingPaper** | Exit |
 
 In **Per Desktop** mode, each Space and monitor gets its own wallpaper -- switch Spaces and the wallpaper changes with it.
 
@@ -78,14 +82,14 @@ In **Per Desktop** mode, each Space and monitor gets its own wallpaper -- switch
 Requires macOS 15.0+ and Swift 6.0+.
 
 ```bash
-git clone https://github.com/8bittts/moving-paper.git
-cd moving-paper
+git clone https://github.com/8bittts/movingpaper.git
+cd movingpaper
 swift build
 swift run MovingPaper
 ```
 
 ```bash
-swift test                         # 20 tests
+swift test                         # 39 tests
 ./scripts/build-dmg.sh             # build + sign + DMG + notarize + appcast
 ./scripts/build-dmg.sh --local     # sign + DMG, skip notarization
 ./scripts/build-dmg.sh --unsigned  # ad-hoc sign, no Developer ID
@@ -107,6 +111,7 @@ A borderless `NSPanel` at `desktopWindow + 1` sits above the system wallpaper bu
 | Windowing | AppKit (`NSPanel`, `NSStatusItem`) |
 | UI | SwiftUI via `NSHostingView` |
 | Video | AVFoundation (`AVQueuePlayer`, `AVPlayerLooper`) |
+| Photos | PhotosUI (`PHPickerViewController`) + PhotoKit (shuffle) |
 | GIF | ImageIO (`CGAnimateImageAtURLWithBlock`) |
 | Desktop tracking | CoreGraphics (`CGSGetActiveSpace`) |
 | Updates | [Sparkle](https://sparkle-project.org) (EdDSA-signed appcast, vendored) |
@@ -123,7 +128,7 @@ Fork, branch, `swift test`, PR. One feature or fix per PR.
 ---
 
 <p align="center">
-  <img src="brand/yen.png" alt="YEN Terminal" width="100%" />
+  <img src="build/yen.png" alt="YEN Terminal" width="100%" />
 </p>
 
 <h3 align="center">Built with YEN</h3>

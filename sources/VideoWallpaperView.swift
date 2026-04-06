@@ -77,11 +77,12 @@ final class VideoPlayerNSView: NSView {
         player?.isMuted = muted
     }
 
-    func pause() {
+    override func removeFromSuperview() {
         player?.pause()
-    }
-
-    func resume() {
-        player?.play()
+        looper = nil
+        player = nil
+        playerLayer?.removeFromSuperlayer()
+        playerLayer = nil
+        super.removeFromSuperview()
     }
 }

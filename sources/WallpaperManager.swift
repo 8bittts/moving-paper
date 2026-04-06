@@ -60,6 +60,9 @@ final class WallpaperManager: ObservableObject {
     /// YouTube downloader for pasting YouTube URLs as wallpapers.
     let youtubeDownloader = YouTubeDownloader()
 
+    /// Photos library access for shuffle mode.
+    let photosService = PhotosService()
+
     // MARK: - Private State
 
     private var controllers: [CGDirectDisplayID: WallpaperWindowController] = [:]
@@ -94,11 +97,6 @@ final class WallpaperManager: ObservableObject {
     var sharedFileURL: URL? {
         guard mode == .allDesktops else { return nil }
         return desktopFiles.values.first
-    }
-
-    /// File name for a display on the current space.
-    func fileName(for displayID: CGDirectDisplayID) -> String? {
-        fileURL(for: displayID)?.lastPathComponent
     }
 
     /// File URL for a display, respecting the current mode and space.
@@ -142,26 +140,21 @@ final class WallpaperManager: ObservableObject {
         !desktopFiles.isEmpty
     }
 
-    /// Whether the current space has any wallpaper on any display.
-    var currentSpaceHasWallpaper: Bool {
-        for screen in NSScreen.screens {
-            guard let id = screen.displayID else { continue }
-            if fileURL(for: id) != nil { return true }
-        }
-        return false
-    }
-
     // MARK: - File Selection
 
     /// Open file picker and assign result.
     func selectFile(for displayID: CGDirectDisplayID? = nil) {
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate()
+        defer { NSApp.setActivationPolicy(.accessory) }
+
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [
             .gif, .mpeg4Movie, .quickTimeMovie, .movie,
         ]
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
-        panel.message = "Choose a GIF or video file for your Moving Paper wallpaper"
+        panel.message = "Choose a GIF or video file for your MovingPaper wallpaper"
 
         guard panel.runModal() == .OK, let url = panel.url else { return }
         setWallpaper(url: url, for: displayID)
@@ -174,6 +167,7 @@ final class WallpaperManager: ObservableObject {
         switch mode {
         case .allDesktops:
             desktopFiles.removeAll()
+            youtubeURLs.removeAll()
             for screen in NSScreen.screens {
                 if let id = screen.displayID {
                     desktopFiles[DesktopKey(displayID: id)] = url
@@ -183,6 +177,7 @@ final class WallpaperManager: ObservableObject {
             if let id = displayID {
                 let key = DesktopKey(displayID: id, spaceID: activeSpaceID)
                 desktopFiles[key] = url
+                youtubeURLs.removeValue(forKey: key)
             }
         }
 
@@ -233,18 +228,34 @@ final class WallpaperManager: ObservableObject {
         alert.runModal()
     }
 
-    /// Remove wallpaper from a specific display (current space in perDesktop mode).
-    func clearWallpaper(for displayID: CGDirectDisplayID) {
+    // MARK: - Photos Shuffle
+
+    /// Pick a random video from the entire Photos library and set it as wallpaper.
+    func shuffleFromPhotos(for displayID: CGDirectDisplayID? = nil) {
+        Task {
+            guard let url = await photosService.randomVideoURL() else {
+                showAlert(title: "No Videos Found", message: "Grant Photos access in System Settings or add videos to your library.")
+                return
+            }
+            setWallpaper(url: url, for: displayID)
+        }
+    }
+
+    /// The DesktopKey for a display on the current space, respecting mode.
+    private func desktopKey(for displayID: CGDirectDisplayID) -> DesktopKey {
         switch mode {
         case .allDesktops:
-            let key = DesktopKey(displayID: displayID)
-            desktopFiles.removeValue(forKey: key)
-            youtubeURLs.removeValue(forKey: key)
+            return DesktopKey(displayID: displayID)
         case .perDesktop:
-            let key = DesktopKey(displayID: displayID, spaceID: activeSpaceID)
-            desktopFiles.removeValue(forKey: key)
-            youtubeURLs.removeValue(forKey: key)
+            return DesktopKey(displayID: displayID, spaceID: activeSpaceID)
         }
+    }
+
+    /// Remove wallpaper from a specific display (current space in perDesktop mode).
+    func clearWallpaper(for displayID: CGDirectDisplayID) {
+        let key = desktopKey(for: displayID)
+        desktopFiles.removeValue(forKey: key)
+        youtubeURLs.removeValue(forKey: key)
         if let controller = controllers.removeValue(forKey: displayID) {
             controller.close()
         }
@@ -263,15 +274,17 @@ final class WallpaperManager: ObservableObject {
     func setMode(_ newMode: WallpaperMode) {
         guard newMode != mode else { return }
 
-        if newMode == .allDesktops, let firstURL = desktopFiles.values.first {
-            let firstYT = youtubeURLs.values.first
-            desktopFiles.removeAll()
-            youtubeURLs.removeAll()
-            for screen in NSScreen.screens {
-                if let id = screen.displayID {
-                    let key = DesktopKey(displayID: id)
-                    desktopFiles[key] = firstURL
-                    if let yt = firstYT { youtubeURLs[key] = yt }
+        if newMode == .allDesktops {
+            if let firstURL = desktopFiles.values.first {
+                let firstYT = youtubeURLs.values.first
+                desktopFiles.removeAll()
+                youtubeURLs.removeAll()
+                for screen in NSScreen.screens {
+                    if let id = screen.displayID {
+                        let key = DesktopKey(displayID: id)
+                        desktopFiles[key] = firstURL
+                        if let yt = firstYT { youtubeURLs[key] = yt }
+                    }
                 }
             }
         } else if newMode == .perDesktop {
@@ -303,7 +316,21 @@ final class WallpaperManager: ObservableObject {
     func toggleMute() {
         isMuted.toggle()
         saveState()
-        rebuildAllWindows()
+        // Update existing players in-place — no teardown/rebuild needed
+        for controller in controllers.values {
+            applyMuteState(to: controller.panel.contentView)
+        }
+    }
+
+    private func applyMuteState(to view: NSView?) {
+        guard let view else { return }
+        if let videoView = view as? VideoPlayerNSView {
+            videoView.setMuted(isMuted)
+            return
+        }
+        for subview in view.subviews {
+            applyMuteState(to: subview)
+        }
     }
 
     // MARK: - Persistence
@@ -359,10 +386,6 @@ final class WallpaperManager: ObservableObject {
             }
         }
 
-        if !desktopFiles.isEmpty {
-            rebuildAllWindows()
-        }
-
         // Re-download missing YouTube videos in background
         for (key, ytURL) in needsRedownload {
             Task {
@@ -371,6 +394,10 @@ final class WallpaperManager: ObservableObject {
                 saveState()
                 rebuildAllWindows()
             }
+        }
+
+        if !desktopFiles.isEmpty {
+            rebuildAllWindows()
         }
     }
 
@@ -382,6 +409,7 @@ final class WallpaperManager: ObservableObject {
 
         for screen in NSScreen.screens {
             guard let displayID = screen.displayID else { continue }
+
             guard let url = fileURL(for: displayID) else { continue }
             guard let type = fileType(for: url) else { continue }
 

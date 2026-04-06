@@ -20,11 +20,10 @@ set -euo pipefail
 
 APP_NAME="MovingPaper"
 BUNDLE_ID="com.8bittts.moving-paper"
-GITHUB_REPO="8bittts/moving-paper"
+GITHUB_REPO="8bittts/movingpaper"
 MIN_MACOS="15.0"
-DIST_DIR="dist"
 BUILD_DIR="build"
-DMG_VOLUME_NAME="Moving Paper"
+DMG_VOLUME_NAME="MovingPaper"
 DMG_WINDOW_WIDTH=540
 DMG_WINDOW_HEIGHT=400
 DMG_ICON_SIZE=128
@@ -53,7 +52,7 @@ step()  { printf "\033[1;36m  ->\033[0m %s\n" "$1"; }
 
 # ── Version ──────────────────────────────────────────────────────────────────
 
-PLIST_FILE="Sources/${APP_NAME}/Resources/Info.plist"
+PLIST_FILE="sources/Resources/Info.plist"
 
 # Auto-increment version: 0.001 -> 0.002 -> ... -> 0.999 -> 1.001
 # Reads current version from Info.plist, bumps by .001, writes back.
@@ -86,7 +85,7 @@ CURRENT_BUILD=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$PLIST_FILE
 BUILD_NUMBER="${MOVINGPAPER_BUILD:-$((CURRENT_BUILD + 1))}"
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$PLIST_FILE"
 
-info "Moving Paper v${VERSION} (build ${BUILD_NUMBER})"
+info "MovingPaper v${VERSION} (build ${BUILD_NUMBER})"
 
 # ── Signing identity ────────────────────────────────────────────────────────
 
@@ -134,8 +133,17 @@ can_notarize() {
 # ── Step 1: Clean ────────────────────────────────────────────────────────────
 
 info "Cleaning previous artifacts"
-/bin/rm -rf "$DIST_DIR" "$BUILD_DIR"
-mkdir -p "$DIST_DIR" "$BUILD_DIR"
+# Preserve brand assets (*.png at top level)
+if [ -d "$BUILD_DIR" ]; then
+    for item in "$BUILD_DIR"/*; do
+        [ -e "$item" ] || continue
+        case "$item" in
+            *.png) ;; # keep brand images
+            *)     /bin/rm -rf "$item" ;;
+        esac
+    done
+fi
+mkdir -p "$BUILD_DIR"
 
 # ── Step 1b: Fetch yt-dlp if missing ─────────────────────────────────────────
 
@@ -181,7 +189,7 @@ fi
 
 info "Assembling ${APP_NAME}.app"
 
-APP_BUNDLE="${DIST_DIR}/${APP_NAME}.app"
+APP_BUNDLE="${BUILD_DIR}/${APP_NAME}.app"
 CONTENTS="${APP_BUNDLE}/Contents"
 MACOS_DIR="${CONTENTS}/MacOS"
 RESOURCES_DIR="${CONTENTS}/Resources"
@@ -225,9 +233,9 @@ cat > "${CONTENTS}/Info.plist" <<PLIST
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
-    <string>Moving Paper</string>
+    <string>MovingPaper</string>
     <key>CFBundleDisplayName</key>
-    <string>Moving Paper</string>
+    <string>MovingPaper</string>
     <key>CFBundleIdentifier</key>
     <string>${BUNDLE_ID}</string>
     <key>CFBundleVersion</key>
@@ -248,6 +256,8 @@ cat > "${CONTENTS}/Info.plist" <<PLIST
     <true/>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>MovingPaper needs access to your Photos library to shuffle random videos as wallpapers.</string>
     <key>NSHumanReadableCopyright</key>
     <string>Copyright $(date +%Y) 8BIT. MIT License.</string>
     <key>SUEnableAutomaticChecks</key>
@@ -324,8 +334,8 @@ info "Creating DMG"
 
 DMG_STAGING="${BUILD_DIR}/dmg-staging"
 DMG_RW="${BUILD_DIR}/${APP_NAME}-rw.dmg"
-DMG_FINAL="${DIST_DIR}/${APP_NAME}-${VERSION}.dmg"
-DMG_BG_SOURCE="brand/moving-paper-dmg-background.png"
+DMG_FINAL="${BUILD_DIR}/${APP_NAME}-${VERSION}.dmg"
+DMG_BG_SOURCE="build/movingpaper-dmg-background.png"
 DMG_BG_OPAQUE="${BUILD_DIR}/dmg-background-opaque.png"
 
 # DMG layout constants (background is 2062x1080, window is ~660x400)
@@ -339,7 +349,7 @@ DMG_WIN_RIGHT_JIGGLE=$((DMG_WIN_RIGHT - 10))
 DMG_WIN_BOTTOM_JIGGLE=$((DMG_WIN_BOTTOM - 10))
 
 mkdir -p "$DMG_STAGING"
-cp -R "$APP_BUNDLE" "$DMG_STAGING/Moving Paper.app"
+cp -R "$APP_BUNDLE" "$DMG_STAGING/MovingPaper.app"
 ln -s /Applications "$DMG_STAGING/Applications"
 
 # Prepare background image (must be opaque RGB -- Finder silently fails with RGBA)
@@ -406,7 +416,7 @@ tell application "Finder"
         set icon size of theViewOptions to ${DMG_ICON_SIZE}
         set text size of theViewOptions to 14
         $BG_CMD
-        set position of item "Moving Paper.app" of container window to {200, 200}
+        set position of item "MovingPaper.app" of container window to {200, 200}
         set position of item "Applications" of container window to {460, 200}
         try
             set position of item ".background" of container window to {330, 900}
@@ -488,7 +498,7 @@ fi
 
 info "Generating checksum"
 CHECKSUM=$(shasum -a 256 "$DMG_FINAL" | awk '{print $1}')
-echo "$CHECKSUM  $(basename "$DMG_FINAL")" > "${DIST_DIR}/${APP_NAME}-${VERSION}.sha256"
+echo "$CHECKSUM  $(basename "$DMG_FINAL")" > "${BUILD_DIR}/${APP_NAME}-${VERSION}.sha256"
 step "SHA-256: ${CHECKSUM}"
 
 # ── Step 8b: Create local git tag ────────────────────────────────────────────
@@ -512,7 +522,7 @@ import re, sys
 text = open('README.md').read()
 text = re.sub(
     r'<!-- download-link -->.*?<!-- /download-link -->',
-    '<!-- download-link -->\n[**Download Moving Paper v${VERSION}**](${DOWNLOAD_URL})\n<!-- /download-link -->',
+    '<!-- download-link -->\n[**Download MovingPaper v${VERSION}**](${DOWNLOAD_URL})\n<!-- /download-link -->',
     text, flags=re.DOTALL)
 text = re.sub(
     r'<!-- version-badge -->.*?<!-- /version-badge -->',
@@ -529,7 +539,7 @@ APPCAST_SCRIPT="$(dirname "$0")/generate-appcast.sh"
 if [ -f "$APPCAST_SCRIPT" ] && [ "$BUILD_ONLY" = false ]; then
     info "Generating appcast"
     bash "$APPCAST_SCRIPT"
-    step "Appcast generated: ${DIST_DIR}/appcast.xml"
+    step "Appcast generated: ${BUILD_DIR}/appcast.xml"
 else
     if [ "$BUILD_ONLY" = true ]; then
         step "Skipping appcast (--build-only)"
@@ -546,7 +556,7 @@ echo ""
 info "Build complete"
 echo "  App:      ${APP_BUNDLE}"
 echo "  DMG:      ${DMG_FINAL} (${DMG_SIZE})"
-echo "  Checksum: ${DIST_DIR}/${APP_NAME}-${VERSION}.sha256"
+echo "  Checksum: ${BUILD_DIR}/${APP_NAME}-${VERSION}.sha256"
 echo "  Download: ${DOWNLOAD_URL}"
 if [ "$CODESIGN_IDENTITY" != "-" ]; then
     echo "  Signed:   ${CODESIGN_IDENTITY}"

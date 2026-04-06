@@ -2,7 +2,7 @@ import Combine
 import Foundation
 @preconcurrency import Sparkle
 
-/// Sparkle auto-updater wrapper for Moving Paper.
+/// Sparkle auto-updater wrapper for MovingPaper.
 /// Checks for updates via an appcast feed and handles EdDSA-signed releases.
 @MainActor
 final class MovingPaperUpdater: NSObject, ObservableObject {

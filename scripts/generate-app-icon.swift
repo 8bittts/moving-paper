@@ -1,7 +1,7 @@
 #!/usr/bin/env swift
 //
 // generate-app-icon.swift
-// Scales brand/moving-paper.png to all required sizes for macOS .icns creation.
+// Scales build/movingpaper.png to all required sizes for macOS .icns creation.
 //
 //   swift scripts/generate-app-icon.swift
 //   iconutil -c icns build/MovingPaper.iconset -o build/MovingPaper.icns
@@ -9,7 +9,7 @@
 import AppKit
 import Foundation
 
-let sourcePath = "brand/moving-paper.png"
+let sourcePath = "build/movingpaper.png"
 let iconsetDir = "build/MovingPaper.iconset"
 
 guard let sourceData = try? Data(contentsOf: URL(fileURLWithPath: sourcePath)),

@@ -1,7 +1,10 @@
 .DS_Store
 /.build
-/build
-/dist
+/build/*
+!/build/movingpaper.png
+!/build/movingpaper-dmg-background.png
+!/build/banner.png
+!/build/yen.png
 /Packages
 xcuserdata/
 DerivedData/

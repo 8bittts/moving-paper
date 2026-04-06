@@ -24,6 +24,7 @@ struct GIFWallpaperView: NSViewRepresentable {
 final class GIFAnimationNSView: NSView {
     private var imageLayer: CALayer?
     private var animationStatus: OSStatus = noErr
+    private var stopped = false
     private(set) var currentURL: URL?
 
     override init(frame: NSRect) {
@@ -48,17 +49,15 @@ final class GIFAnimationNSView: NSView {
     }
 
     func loadGIF(url: URL) {
-        // Stop any running animation
         stopAnimation()
+        stopped = false
         currentURL = url
 
-        // CGAnimateImageAtURLWithBlock calls back on each frame at the GIF's
-        // native delay intervals. We render each frame into the CALayer.
         animationStatus = CGAnimateImageAtURLWithBlock(
             url as CFURL,
             nil
         ) { [weak self] _, cgImage, stop in
-            guard let self else {
+            guard let self, !self.stopped else {
                 stop.pointee = true
                 return
             }
@@ -73,9 +72,13 @@ final class GIFAnimationNSView: NSView {
     }
 
     func stopAnimation() {
-        // Setting contents to nil stops rendering; the animation block's
-        // stop pointer is handled via the weak self guard above.
+        stopped = true
         imageLayer?.contents = nil
         currentURL = nil
+    }
+
+    override func removeFromSuperview() {
+        stopAnimation()
+        super.removeFromSuperview()
     }
 }

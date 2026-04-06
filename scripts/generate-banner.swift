@@ -2,7 +2,7 @@
 //
 // generate-banner.swift
 // Generates an 8-bit pixel art banner: app icon + "MOVING PAPER" text.
-// Output: brand/banner.png (800x200, transparent background)
+// Output: build/banner.png (800x200, transparent background)
 //
 // Usage: swift scripts/generate-banner.swift
 
@@ -156,8 +156,8 @@ cg.setShouldAntialias(false)
 cg.interpolationQuality = .none
 cg.clear(CGRect(x: 0, y: 0, width: bannerWidth, height: bannerHeight))
 
-// Draw the app icon (load from brand/moving-paper.png)
-let iconPath = "brand/moving-paper.png"
+// Draw the app icon (load from build/movingpaper.png)
+let iconPath = "build/movingpaper.png"
 if let iconData = try? Data(contentsOf: URL(fileURLWithPath: iconPath)),
    let iconImage = NSImage(data: iconData) {
     let iconRect = CGRect(
@@ -205,5 +205,5 @@ guard let data = rep.representation(using: .png, properties: [:]) else {
     exit(1)
 }
 
-try! data.write(to: URL(fileURLWithPath: "brand/banner.png"))
-print("Wrote brand/banner.png (\(bannerWidth)x\(bannerHeight))")
+try! data.write(to: URL(fileURLWithPath: "build/banner.png"))
+print("Wrote build/banner.png (\(bannerWidth)x\(bannerHeight))")

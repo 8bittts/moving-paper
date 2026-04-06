@@ -12,7 +12,7 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "MovingPaper",
-            path: "Sources/MovingPaper",
+            path: "sources",
             resources: [
                 .copy("Resources"),
             ],
@@ -37,7 +37,7 @@ let package = Package(
         ),
         .testTarget(
             name: "MovingPaperTests",
-            path: "Tests/MovingPaperTests"
+            path: "tests"
         ),
     ]
 )

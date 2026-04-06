@@ -1,6 +1,6 @@
 import AppKit
 
-/// Menu bar icon for Moving Paper.
+/// Menu bar icon for MovingPaper.
 /// Loads a pre-rounded brand image from the resource bundle.
 @MainActor
 enum MenuBarIcon {
@@ -15,7 +15,7 @@ enum MenuBarIcon {
             return img
         }
 
-        let fallback = NSImage(systemSymbolName: "cloud.moon.fill", accessibilityDescription: "Moving Paper") ?? NSImage()
+        let fallback = NSImage(systemSymbolName: "cloud.moon.fill", accessibilityDescription: "MovingPaper") ?? NSImage()
         fallback.size = pointSize
         return fallback
     }

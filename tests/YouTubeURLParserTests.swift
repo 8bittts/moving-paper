@@ -3,7 +3,7 @@ import Testing
 
 // YouTubeURLParser is duplicated here for testing without importing
 // the main module (which requires Sparkle framework at compile time).
-// The canonical implementation lives in Sources/MovingPaper/YouTubeURLParser.swift.
+// The canonical implementation lives in sources/YouTubeURLParser.swift.
 
 private enum YouTubeURLParser {
     private static let patterns: [(regex: NSRegularExpression, group: Int)] = {

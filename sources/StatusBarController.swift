@@ -17,7 +17,7 @@ final class StatusBarController {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = item.button {
             let icon = MenuBarIcon.brandIcon()
-            icon.accessibilityDescription = "Moving Paper"
+            icon.accessibilityDescription = "MovingPaper"
             button.image = icon
         }
         self.statusItem = item
@@ -124,8 +124,10 @@ final class StatusBarController {
         }
 
         // ── Check for Updates ──
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+        let updateTitle = version.isEmpty ? "Check for Updates..." : "Check for Updates (v\(version))..."
         let updateItem = NSMenuItem(
-            title: "Check for Updates...",
+            title: updateTitle,
             action: #selector(checkForUpdates),
             keyEquivalent: "u"
         )
@@ -146,7 +148,7 @@ final class StatusBarController {
 
         // ── Quit ──
         let quitItem = NSMenuItem(
-            title: "Quit Moving Paper",
+            title: "Quit MovingPaper",
             action: #selector(quit),
             keyEquivalent: "q"
         )
@@ -191,6 +193,22 @@ final class StatusBarController {
         )
         youtubeItem.target = self
         menu.addItem(youtubeItem)
+
+        let photosItem = NSMenuItem(
+            title: "Choose from Photos...",
+            action: #selector(chooseFromPhotosForAll),
+            keyEquivalent: ""
+        )
+        photosItem.target = self
+        menu.addItem(photosItem)
+
+        let shuffleItem = NSMenuItem(
+            title: "Shuffle from Photos",
+            action: #selector(shuffleFromPhotosForAll),
+            keyEquivalent: ""
+        )
+        shuffleItem.target = self
+        menu.addItem(shuffleItem)
     }
 
     // MARK: - Per Display Mode Menu
@@ -245,6 +263,24 @@ final class StatusBarController {
                     ytItem.tag = Int(display.id)
                     sub.addItem(ytItem)
 
+                    let photosItem = NSMenuItem(
+                        title: "Choose from Photos...",
+                        action: #selector(chooseFromPhotosForDisplay(_:)),
+                        keyEquivalent: ""
+                    )
+                    photosItem.target = self
+                    photosItem.tag = Int(display.id)
+                    sub.addItem(photosItem)
+
+                    let shuffleItem = NSMenuItem(
+                        title: "Shuffle from Photos",
+                        action: #selector(shuffleFromPhotosForDisplay(_:)),
+                        keyEquivalent: ""
+                    )
+                    shuffleItem.target = self
+                    shuffleItem.tag = Int(display.id)
+                    sub.addItem(shuffleItem)
+
                     let removeItem = NSMenuItem(
                         title: "Remove",
                         action: #selector(clearDisplayWallpaper(_:)),
@@ -286,6 +322,24 @@ final class StatusBarController {
                 ytItem.target = self
                 ytItem.tag = Int(display.id)
                 sub.addItem(ytItem)
+
+                let photosItem = NSMenuItem(
+                    title: "Choose from Photos...",
+                    action: #selector(chooseFromPhotosForDisplay(_:)),
+                    keyEquivalent: ""
+                )
+                photosItem.target = self
+                photosItem.tag = Int(display.id)
+                sub.addItem(photosItem)
+
+                let shuffleItem = NSMenuItem(
+                    title: "Shuffle from Photos",
+                    action: #selector(shuffleFromPhotosForDisplay(_:)),
+                    keyEquivalent: ""
+                )
+                shuffleItem.target = self
+                shuffleItem.tag = Int(display.id)
+                sub.addItem(shuffleItem)
 
                 item.submenu = sub
                 menu.addItem(item)
@@ -362,6 +416,10 @@ final class StatusBarController {
     }
 
     private func promptForYouTubeURL() -> String? {
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate()
+        defer { NSApp.setActivationPolicy(.accessory) }
+
         let alert = NSAlert()
         alert.messageText = "Paste YouTube URL"
         alert.informativeText = "Enter a YouTube video URL to use as your wallpaper."
@@ -383,6 +441,42 @@ final class StatusBarController {
         guard alert.runModal() == .alertFirstButtonReturn else { return nil }
         let value = input.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         return value.isEmpty ? nil : value
+    }
+
+    @objc private func chooseFromPhotosForAll() {
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate()
+        Task {
+            let picker = PhotosPickerController()
+            let url = await picker.run()
+            // Reset activation policy regardless of result (picker sets it on success,
+            // but if isShowing guard fires, nobody resets it)
+            NSApp.setActivationPolicy(.accessory)
+            guard let url else { return }
+            wallpaperManager.setWallpaper(url: url)
+        }
+    }
+
+    @objc private func chooseFromPhotosForDisplay(_ sender: NSMenuItem) {
+        let displayID = CGDirectDisplayID(sender.tag)
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate()
+        Task {
+            let picker = PhotosPickerController()
+            let url = await picker.run()
+            NSApp.setActivationPolicy(.accessory)
+            guard let url else { return }
+            wallpaperManager.setWallpaper(url: url, for: displayID)
+        }
+    }
+
+    @objc private func shuffleFromPhotosForAll() {
+        wallpaperManager.shuffleFromPhotos()
+    }
+
+    @objc private func shuffleFromPhotosForDisplay(_ sender: NSMenuItem) {
+        let displayID = CGDirectDisplayID(sender.tag)
+        wallpaperManager.shuffleFromPhotos(for: displayID)
     }
 
     @objc private func checkForUpdates() {
