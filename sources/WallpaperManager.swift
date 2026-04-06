@@ -236,14 +236,19 @@ final class WallpaperManager: ObservableObject {
 
     /// Pick a random video from the entire Photos library and set it as wallpaper.
     func shuffleFromPhotos(for displayID: CGDirectDisplayID? = nil) {
+        // Activate so the system authorization prompt can appear
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate()
         loadingOverlay.show(message: "Shuffling...")
         Task {
             guard let url = await photosService.randomVideoURL() else {
                 loadingOverlay.hide()
+                NSApp.setActivationPolicy(.accessory)
                 showAlert(title: "No Videos Found", message: "Grant Photos access in System Settings or add videos to your library.")
                 return
             }
             loadingOverlay.hide()
+            NSApp.setActivationPolicy(.accessory)
             setWallpaper(url: url, for: displayID)
         }
     }
