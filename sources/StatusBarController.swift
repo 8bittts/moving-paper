@@ -30,7 +30,7 @@ final class StatusBarController {
             wallpaperManager.$isPaused.dropFirst().map { _ in () }.eraseToAnyPublisher(),
             wallpaperManager.$isMuted.dropFirst().map { _ in () }.eraseToAnyPublisher(),
             wallpaperManager.$mode.dropFirst().map { _ in () }.eraseToAnyPublisher(),
-            wallpaperManager.$activeSpaceID.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            wallpaperManager.$activeSpaceIDs.dropFirst().map { _ in () }.eraseToAnyPublisher(),
             wallpaperManager.youtubeDownloader.$state.dropFirst().map { _ in () }.eraseToAnyPublisher(),
             updater.$canCheckForUpdates.dropFirst().map { _ in () }.eraseToAnyPublisher()
         )

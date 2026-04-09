@@ -128,7 +128,7 @@ NOTES
     if [ -n "${SPARKLE_NOTES_SINCE:-}" ]; then
         prev_tag="$SPARKLE_NOTES_SINCE"
     else
-        prev_tag=$(git tag --sort=-v:refname | grep '^v' | head -2 | tail -1)
+        prev_tag=$(git tag --sort=-v:refname | grep '^v' | grep -vx "v${ver}" | head -1)
     fi
 
     # Get user-facing commit messages since the last tag

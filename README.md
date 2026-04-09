@@ -95,18 +95,19 @@ Requires macOS 15.0+ and Swift 6.0+.
 ```bash
 git clone https://github.com/8bittts/movingpaper.git
 cd movingpaper
-swift build
-swift run MovingPaper
+swift test
+./script/build_and_run.sh
 ```
 
 ```bash
-swift test                         # 39 tests
-./scripts/build-dmg.sh             # build + sign + DMG + notarize + appcast
-./scripts/build-dmg.sh --local     # sign + DMG, skip notarization
-./scripts/build-dmg.sh --unsigned  # ad-hoc sign, no Developer ID
+./script/build_and_run.sh --logs        # launch and stream app logs
+./scripts/build-dmg.sh --build-only     # assemble release app bundle only
+./scripts/build-dmg.sh --local          # build + sign + DMG, skip notarization
+./scripts/build-dmg.sh --unsigned       # ad-hoc sign, no Developer ID
+./scripts/release-movingpaper.sh        # bump + package + notarize + tag + GitHub release
 ```
 
-Version auto-increments on each release build (`0.001` -> `0.002` -> ...). The build script generates an EdDSA-signed `appcast.xml` for Sparkle auto-updates.
+Use `./script/build_and_run.sh` for local iteration so MovingPaper launches as a real `.app` bundle with Sparkle metadata and embedded frameworks. `./scripts/build-dmg.sh` is now packaging-only, and `./scripts/release-movingpaper.sh` owns the version bump (`0.001` -> `0.002` -> ...) plus tag, README, and GitHub Release updates after the artifact build succeeds.
 
 ---
 

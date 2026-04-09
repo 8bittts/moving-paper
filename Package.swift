@@ -37,7 +37,26 @@ let package = Package(
         ),
         .testTarget(
             name: "MovingPaperTests",
-            path: "tests"
+            dependencies: ["MovingPaper"],
+            path: "tests",
+            swiftSettings: [
+                .unsafeFlags([
+                    "-F",
+                    "tools/sparkle",
+                ]),
+            ],
+            linkerSettings: [
+                .unsafeFlags([
+                    "-F",
+                    "tools/sparkle",
+                    "-framework",
+                    "Sparkle",
+                    "-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks",
+                    "-Xlinker", "-rpath", "-Xlinker", "@loader_path/../Frameworks",
+                    "-Xlinker", "-rpath", "-Xlinker", "@executable_path/../../../../../../tools/sparkle",
+                    "-Xlinker", "-rpath", "-Xlinker", "@loader_path/../../../../../../tools/sparkle",
+                ]),
+            ]
         ),
     ]
 )

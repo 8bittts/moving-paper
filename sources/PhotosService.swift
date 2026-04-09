@@ -1,10 +1,9 @@
-import AppKit
-import AVFoundation
-import Photos
+@preconcurrency import AVFoundation
+@preconcurrency import Photos
 
 /// Fetches random videos from the Photos library for shuffle mode.
 @MainActor
-final class PhotosService {
+final class PhotosService: @unchecked Sendable {
 
     nonisolated func requestAccess() async -> Bool {
         let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
@@ -45,35 +44,16 @@ final class PhotosService {
 
         // Request export session with a 15s timeout to avoid hanging on iCloud assets
         nonisolated(unsafe) var exportSession: AVAssetExportSession?
-        let gotSession: Bool = await withTimeout(seconds: 15) { () -> Bool in
-            await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-                let reqOptions = PHVideoRequestOptions()
-                reqOptions.isNetworkAccessAllowed = true
-                reqOptions.deliveryMode = .highQualityFormat
-
-                PHImageManager.default().requestExportSession(
-                    forVideo: asset,
-                    options: reqOptions,
-                    exportPreset: AVAssetExportPresetHighestQuality
-                ) { session, _ in
-                    exportSession = session
-                    continuation.resume()
-                }
-            }
-            return true
+        let gotSession = await withTimeout(seconds: 15) { [self] in
+            exportSession = await self.requestExportSession(for: asset)
+            return exportSession != nil
         } ?? false
 
         guard gotSession, let session = exportSession else { return nil }
 
         // Export with a 30s timeout
-        nonisolated(unsafe) let capturedSession = session
-        let exported: Bool = await withTimeout(seconds: 30) {
-            do {
-                try await capturedSession.export(to: destURL, as: .mp4)
-                return true
-            } catch {
-                return false
-            }
+        let exported = await withTimeout(seconds: 30) { [self] in
+            await self.export(session: session, to: destURL)
         } ?? false
 
         if exported, FileManager.default.fileExists(atPath: destURL.path(percentEncoded: false)) {
@@ -83,6 +63,47 @@ final class PhotosService {
         // Clean up partial file on failure
         try? FileManager.default.removeItem(at: destURL)
         return nil
+    }
+
+    nonisolated private func requestExportSession(for asset: PHAsset) async -> AVAssetExportSession? {
+        nonisolated(unsafe) var requestID: PHImageRequestID = PHInvalidImageRequestID
+        nonisolated(unsafe) var exportSession: AVAssetExportSession?
+
+        await withTaskCancellationHandler(operation: {
+            await withCheckedContinuation { continuation in
+                let reqOptions = PHVideoRequestOptions()
+                reqOptions.isNetworkAccessAllowed = true
+                reqOptions.deliveryMode = .highQualityFormat
+
+                requestID = PHImageManager.default().requestExportSession(
+                    forVideo: asset,
+                    options: reqOptions,
+                    exportPreset: AVAssetExportPresetHighestQuality
+                ) { session, _ in
+                    exportSession = session
+                    continuation.resume()
+                }
+            }
+        }, onCancel: {
+            if requestID != PHInvalidImageRequestID {
+                PHImageManager.default().cancelImageRequest(requestID)
+            }
+        })
+
+        return exportSession
+    }
+
+    nonisolated private func export(session: AVAssetExportSession, to destURL: URL) async -> Bool {
+        await withTaskCancellationHandler(operation: {
+            do {
+                try await session.export(to: destURL, as: .mp4)
+                return true
+            } catch {
+                return false
+            }
+        }, onCancel: {
+            session.cancelExport()
+        })
     }
 }
 

@@ -22,6 +22,8 @@ final class YouTubeDownloader: ObservableObject {
     @Published private(set) var state: State = .idle
 
     private var process: Process?
+    private var activeDownloadID: UUID?
+    private var cancelledDownloadIDs = Set<UUID>()
 
     // MARK: - Cache Directory
 
@@ -115,10 +117,17 @@ final class YouTubeDownloader: ObservableObject {
         let outputPath = cacheDir.appendingPathComponent("\(videoID).mp4").path(percentEncoded: false)
         let partialPath = cacheDir.appendingPathComponent("\(videoID).part").path(percentEncoded: false)
 
+        if process != nil {
+            cancel()
+        }
+
+        let downloadID = UUID()
+        activeDownloadID = downloadID
         state = .downloading(progress: 0)
 
         let result = await runYTDLP(
             binary: ytdlp,
+            downloadID: downloadID,
             arguments: [
                 "-f", "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4][height<=1080]/best[ext=mp4]/best",
                 "--merge-output-format", "mp4",
@@ -130,14 +139,25 @@ final class YouTubeDownloader: ObservableObject {
             ]
         )
 
-        // Clean up partial file on failure
-        if !result {
+        guard activeDownloadID == downloadID else {
+            try? FileManager.default.removeItem(atPath: partialPath)
+            return nil
+        }
+
+        activeDownloadID = nil
+
+        switch result {
+        case .cancelled:
+            state = .idle
+            try? FileManager.default.removeItem(atPath: partialPath)
+            return nil
+        case .failed(let message):
             try? FileManager.default.removeItem(atPath: outputPath)
             try? FileManager.default.removeItem(atPath: partialPath)
-            if case .downloading = state {
-                state = .failed("Download failed")
-            }
+            state = .failed(message)
             return nil
+        case .succeeded:
+            break
         }
 
         guard FileManager.default.fileExists(atPath: outputPath) else {
@@ -151,9 +171,15 @@ final class YouTubeDownloader: ObservableObject {
 
     /// Cancel an in-progress download.
     func cancel() {
-        process?.terminate()
-        process = nil
+        if let activeDownloadID {
+            cancelledDownloadIDs.insert(activeDownloadID)
+        }
+
+        let process = self.process
+        self.process = nil
+        activeDownloadID = nil
         state = .idle
+        process?.terminate()
     }
 
     // MARK: - Process Runner
@@ -170,7 +196,13 @@ final class YouTubeDownloader: ObservableObject {
         return env
     }
 
-    private func runYTDLP(binary: String, arguments: [String]) async -> Bool {
+    private enum DownloadResult: Equatable {
+        case succeeded
+        case failed(String)
+        case cancelled
+    }
+
+    private func runYTDLP(binary: String, downloadID: UUID, arguments: [String]) async -> DownloadResult {
         await withCheckedContinuation { continuation in
             let proc = Process()
             proc.executableURL = URL(filePath: binary)
@@ -194,6 +226,7 @@ final class YouTubeDownloader: ObservableObject {
                     let percentStr = line[range].dropLast() // remove %
                     if let percent = Double(percentStr) {
                         Task { @MainActor [weak self] in
+                            guard self?.activeDownloadID == downloadID else { return }
                             self?.state = .downloading(progress: percent / 100.0)
                         }
                     }
@@ -202,33 +235,48 @@ final class YouTubeDownloader: ObservableObject {
 
             proc.terminationHandler = { proc in
                 pipe.fileHandleForReading.readabilityHandler = nil
-                let success = proc.terminationStatus == 0
-                if !success {
-                    let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
-                    let errMsg = String(data: errData, encoding: .utf8) ?? ""
-                    Task { @MainActor [weak self] in
-                        let userMsg = errMsg.contains("ERROR:")
+                let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
+                pipe.fileHandleForReading.closeFile()
+                errPipe.fileHandleForReading.closeFile()
+
+                Task { @MainActor [weak self] in
+                    guard let self else {
+                        continuation.resume(returning: .cancelled)
+                        return
+                    }
+
+                    if self.process === proc {
+                        self.process = nil
+                    }
+
+                    if self.cancelledDownloadIDs.remove(downloadID) != nil || self.activeDownloadID != downloadID {
+                        continuation.resume(returning: .cancelled)
+                        return
+                    }
+
+                    guard proc.terminationStatus == 0 else {
+                        let errMsg = String(data: errData, encoding: .utf8) ?? ""
+                        let userMessage = errMsg.contains("ERROR:")
                             ? errMsg.components(separatedBy: "ERROR:").last?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "Download failed"
                             : "Download failed"
-                        self?.state = .failed(userMsg)
-                        self?.process = nil
+                        continuation.resume(returning: .failed(userMessage))
+                        return
                     }
-                } else {
-                    Task { @MainActor [weak self] in
-                        self?.process = nil
-                    }
+
+                    continuation.resume(returning: .succeeded)
                 }
-                continuation.resume(returning: success)
             }
 
             do {
                 try proc.run()
             } catch {
-                Task { @MainActor [weak self] in
-                    self?.state = .failed("Failed to run yt-dlp: \(error.localizedDescription)")
-                    self?.process = nil
+                pipe.fileHandleForReading.readabilityHandler = nil
+                pipe.fileHandleForReading.closeFile()
+                errPipe.fileHandleForReading.closeFile()
+                if self.process === proc {
+                    self.process = nil
                 }
-                continuation.resume(returning: false)
+                continuation.resume(returning: .failed("Failed to run yt-dlp: \(error.localizedDescription)"))
             }
         }
     }
