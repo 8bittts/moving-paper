@@ -52,8 +52,9 @@ final class PhotosService: @unchecked Sendable {
         guard gotSession, let session = exportSession else { return nil }
 
         // Export with a 30s timeout
+        nonisolated(unsafe) let sendableSession = session
         let exported = await withTimeout(seconds: 30) { [self] in
-            await self.export(session: session, to: destURL)
+            await self.export(session: sendableSession, to: destURL)
         } ?? false
 
         if exported, FileManager.default.fileExists(atPath: destURL.path(percentEncoded: false)) {
@@ -94,7 +95,8 @@ final class PhotosService: @unchecked Sendable {
     }
 
     nonisolated private func export(session: AVAssetExportSession, to destURL: URL) async -> Bool {
-        await withTaskCancellationHandler(operation: {
+        nonisolated(unsafe) let session = session
+        return await withTaskCancellationHandler(operation: {
             do {
                 try await session.export(to: destURL, as: .mp4)
                 return true
