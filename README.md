@@ -59,8 +59,9 @@ Plays a looping video or GIF as your desktop background. Everything on your desk
 
 - **Apple Photos integration** -- pick a video or shuffle a random one from your entire library
 - **YouTube wallpapers** -- paste a URL, it downloads and loops
+- **Resilient async loading** -- stale YouTube and Photos results are cancelled or ignored so your newest wallpaper choice wins
 - **Loading overlay** -- on-brand shimmer pill floats above all windows so you always know what's happening
-- **Per-desktop wallpapers** -- different wallpaper on each macOS Space and monitor
+- **Per-desktop wallpapers** -- different wallpaper on each macOS Space and monitor, including separate Spaces per display
 - **Sound control** -- mute or unmute video audio (muted by default)
 - **Multi-monitor** -- auto-detects displays, adapts on hot-plug
 - **Power-aware** -- pauses on Low Power Mode and thermal throttling
@@ -84,7 +85,7 @@ Plays a looping video or GIF as your desktop background. Everything on your desk
 | **Built with YEN** | Visit yen.chat |
 | **Quit MovingPaper** | Exit |
 
-In **Per Desktop** mode, each Space and monitor gets its own wallpaper -- switch Spaces and the wallpaper changes with it.
+In **Per Desktop** mode, each Space and monitor gets its own wallpaper -- switch Spaces and the wallpaper changes with it, even when macOS is keeping separate active Spaces on different displays.
 
 ---
 
@@ -113,7 +114,7 @@ Use `./script/build_and_run.sh` for local iteration so MovingPaper launches as a
 
 ## How It Works
 
-A borderless `NSPanel` at `desktopWindow + 1` sits above the system wallpaper but below Finder icons. `ignoresMouseEvents = true` keeps the desktop interactive. Video loops via `AVQueuePlayer` + `AVPlayerLooper`. GIFs animate via `CGAnimateImageAtURLWithBlock`. Space changes are tracked via `CGSGetActiveSpace` to swap per-desktop wallpapers without any visible flash.
+A borderless `NSPanel` at `desktopWindow + 1` sits above the system wallpaper but below Finder icons. `ignoresMouseEvents = true` keeps the desktop interactive. Video loops via `AVQueuePlayer` + `AVPlayerLooper`. GIFs animate via `CGAnimateImageAtURLWithBlock`. Per-display Space changes are tracked from macOS's managed display-space snapshot, with a `CGSGetActiveSpace` fallback, so wallpaper swaps stay aligned with the correct monitor and desktop without visible flash.
 
 ## Tech Stack
 
@@ -125,7 +126,7 @@ A borderless `NSPanel` at `desktopWindow + 1` sits above the system wallpaper bu
 | Video | AVFoundation (`AVQueuePlayer`, `AVPlayerLooper`) |
 | Photos | PhotosUI (`PHPickerViewController`) + PhotoKit (shuffle) |
 | GIF | ImageIO (`CGAnimateImageAtURLWithBlock`) |
-| Desktop tracking | CoreGraphics (`CGSGetActiveSpace`) |
+| Desktop tracking | CoreGraphics private APIs (`CGSCopyManagedDisplaySpaces`, `CGSGetActiveSpace`) |
 | Updates | [Sparkle](https://sparkle-project.org) (EdDSA-signed appcast, vendored) |
 | Signing | Developer ID + Apple notarization |
 
