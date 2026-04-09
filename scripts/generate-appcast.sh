@@ -139,7 +139,7 @@ NOTES
             | grep -vi "build script" \
             | grep -vi "build-dmg" \
             | grep -vi "codesign" \
-            | head -6)
+            | head -6 || true)
     fi
 
     if [ -z "$commits" ]; then
