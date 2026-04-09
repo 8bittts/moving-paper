@@ -7,7 +7,7 @@
 	<key>CFBundleExecutable</key>
 	<string>MovingPaper</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.8bittts.moving-paper</string>
+	<string>com.8bittts.movingpaper</string>
 	<key>CFBundleName</key>
 	<string>MovingPaper</string>
 	<key>CFBundlePackageType</key>

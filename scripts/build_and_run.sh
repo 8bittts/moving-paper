@@ -4,7 +4,7 @@ set -euo pipefail
 
 MODE="${1:-run}"
 APP_NAME="MovingPaper"
-BUNDLE_ID="com.8bittts.moving-paper"
+BUNDLE_ID="com.8bittts.movingpaper"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SOURCE_PLIST="${REPO_ROOT}/sources/Resources/Info.plist"
 LOCAL_RUN_DIR="${REPO_ROOT}/build/local-run"

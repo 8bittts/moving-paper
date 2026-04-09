@@ -22,7 +22,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
 APP_NAME="MovingPaper"
-BUNDLE_ID="com.8bittts.moving-paper"
+BUNDLE_ID="com.8bittts.movingpaper"
 GITHUB_REPO="8bittts/movingpaper"
 BUILD_DIR="build"
 DMG_VOLUME_NAME="MovingPaper"

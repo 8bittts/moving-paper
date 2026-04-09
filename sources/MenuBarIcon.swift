@@ -8,7 +8,7 @@ enum MenuBarIcon {
 
     static func brandIcon() -> NSImage {
         // Load pre-rounded icon (corners baked into the PNG)
-        if let url = Bundle.module.url(forResource: "moving-paper-icon", withExtension: "png", subdirectory: "Resources"),
+        if let url = Bundle.module.url(forResource: "movingpaper-icon", withExtension: "png", subdirectory: "Resources"),
            let img = NSImage(contentsOf: url) {
             img.size = pointSize
             img.isTemplate = false

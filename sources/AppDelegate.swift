@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var updater: MovingPaperUpdater?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        AppIdentityDefaultsMigration.migrateIfNeeded()
         installApplicationIcon()
 
         // Menu bar only — no Dock icon, no Cmd+Tab entry
@@ -34,7 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func installApplicationIcon() {
         guard
             let iconURL = Bundle.module.url(
-                forResource: "moving-paper",
+                forResource: "movingpaper",
                 withExtension: "png",
                 subdirectory: "Resources"
             ),
