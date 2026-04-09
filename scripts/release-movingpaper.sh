@@ -129,8 +129,16 @@ gh release create "v${NEXT_VERSION}" \
 step "Created GitHub release"
 
 DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/download/v${NEXT_VERSION}/${APP_NAME}-${NEXT_VERSION}.dmg"
-HTTP_CODE="$(curl -sI -o /dev/null -w "%{http_code}" -L "$DOWNLOAD_URL")"
-[ "$HTTP_CODE" = "200" ] || fail "Download URL returned HTTP ${HTTP_CODE}: ${DOWNLOAD_URL}"
+HTTP_CODE=""
+for attempt in 1 2 3 4 5 6 7 8 9 10; do
+    HTTP_CODE="$(curl -sI -o /dev/null -w "%{http_code}" -L \
+        -H "Cache-Control: no-cache" \
+        "${DOWNLOAD_URL}?t=$(date +%s)")"
+    [ "$HTTP_CODE" = "200" ] && break
+    step "Download URL not ready (HTTP ${HTTP_CODE}) — retry ${attempt}/10 in 3s"
+    sleep 3
+done
+[ "$HTTP_CODE" = "200" ] || fail "Download URL returned HTTP ${HTTP_CODE} after 10 attempts: ${DOWNLOAD_URL}"
 step "Verified release download URL"
 
 echo ""
