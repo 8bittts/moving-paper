@@ -65,9 +65,9 @@ Plays a looping video or GIF as your desktop background. Everything on your desk
 - **Sound control** -- mute or unmute video audio (muted by default)
 - **Multi-monitor** -- auto-detects displays, adapts on hot-plug
 - **Power-aware** -- pauses on Low Power Mode and thermal throttling
-- **Auto-updates** -- checks hourly via Sparkle; no-update alerts stay dockless, and real update sessions temporarily surface the app so Sparkle can present install UI correctly
+- **Automatic update checks** -- checks hourly via Sparkle using a custom app-owned updater dialog that stays dockless
 - **Persistent** -- your wallpapers come back when you relaunch
-- **Menu bar only** -- no Dock icon during normal use; Sparkle only surfaces the app temporarily while an update session is active
+- **Menu bar only** -- no Dock icon during normal use, update checks, or update install prompts
 
 ## Menu
 
@@ -81,7 +81,7 @@ Plays a looping video or GIF as your desktop background. Everything on your desk
 | **MovingPaper Mode** | All Desktops or Per Desktop |
 | **Pause / Resume** | Stop or restart playback |
 | **Remove MovingPaper** | Clear wallpaper |
-| **Check for Updates...** | Sparkle update check; if an update is available, MovingPaper temporarily surfaces so Sparkle's install window can be focused |
+| **Check for Updates...** | Sparkle update check in MovingPaper's custom dockless updater dialog |
 | **Built with YEN** | Visit yen.chat |
 | **Quit MovingPaper** | Exit |
 
@@ -108,7 +108,7 @@ swift test
 ./scripts/release-movingpaper.sh        # bump + package + notarize + tag + GitHub release
 ```
 
-Use `./script/build_and_run.sh` for local iteration so MovingPaper launches as a real `.app` bundle with Sparkle metadata and embedded frameworks. `swift run MovingPaper` is still fine for general app codepaths, but Sparkle stays dormant there because it is not a fully staged app bundle. `./scripts/build-dmg.sh` is now packaging-only, and `./scripts/release-movingpaper.sh` owns the version bump (`0.001` -> `0.002` -> ...) plus tag, README, and GitHub Release updates after the artifact build succeeds.
+Use `./script/build_and_run.sh` for local iteration so MovingPaper launches as a real `.app` bundle with Sparkle metadata, verify-before-extraction enabled, and embedded frameworks. `swift run MovingPaper` is still fine for general app codepaths, but Sparkle stays dormant there because it is not a fully staged app bundle. `./scripts/build-dmg.sh` is now packaging-only, and `./scripts/release-movingpaper.sh` owns the version bump (`0.001` -> `0.002` -> ...) plus tag, README, and GitHub Release updates after the artifact build succeeds.
 
 ---
 
@@ -127,7 +127,7 @@ A borderless `NSPanel` at `desktopWindow + 1` sits above the system wallpaper bu
 | Photos | PhotosUI (`PHPickerViewController`) + PhotoKit (shuffle) |
 | GIF | ImageIO (`CGAnimateImageAtURLWithBlock`) |
 | Desktop tracking | CoreGraphics private APIs (`CGSCopyManagedDisplaySpaces`, `CGSGetActiveSpace`) |
-| Updates | [Sparkle](https://sparkle-project.org) (EdDSA-signed appcast, vendored) |
+| Updates | [Sparkle](https://sparkle-project.org) (EdDSA-signed appcast, verify-before-extraction, vendored) |
 | Signing | Developer ID + Apple notarization |
 
 ## Contributing

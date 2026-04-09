@@ -79,10 +79,13 @@ plist_set "$INFO_PLIST" "CFBundleName" string "$APP_NAME"
 plist_set "$INFO_PLIST" "CFBundlePackageType" string "APPL"
 plist_set "$INFO_PLIST" "CFBundleIconFile" string "$APP_NAME"
 plist_set "$INFO_PLIST" "NSPrincipalClass" string "NSApplication"
+# Local staged app bundles mirror release updater defaults so Sparkle behavior
+# matches distribution builds during manual verification.
 plist_set "$INFO_PLIST" "SUEnableAutomaticChecks" bool true
 plist_set "$INFO_PLIST" "SUFeedURL" string "$SPARKLE_FEED_URL"
 plist_set "$INFO_PLIST" "SUPublicEDKey" string "$SPARKLE_PUBLIC_ED_KEY"
 plist_set "$INFO_PLIST" "SUScheduledCheckInterval" integer 3600
+plist_set "$INFO_PLIST" "SUVerifyUpdateBeforeExtraction" bool true
 
 case "$MODE" in
     run)
