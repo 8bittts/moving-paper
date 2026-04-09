@@ -56,6 +56,8 @@ if [ -d "$ICONSET_DIR" ]; then
     iconutil -c icns "$ICONSET_DIR" -o "$ICNS_FILE"
 fi
 
+LEGACY_LOCAL_BUNDLE="${LOCAL_RUN_DIR}/MovingPaper Dev.app"
+/bin/rm -rf "$LEGACY_LOCAL_BUNDLE"
 /bin/rm -rf "$APP_BUNDLE"
 mkdir -p "$APP_MACOS" "$APP_RESOURCES" "$APP_FRAMEWORKS"
 
@@ -76,6 +78,7 @@ cp "$SOURCE_PLIST" "$INFO_PLIST"
 plist_set "$INFO_PLIST" "CFBundleIdentifier" string "$BUNDLE_ID"
 plist_set "$INFO_PLIST" "CFBundleExecutable" string "$APP_NAME"
 plist_set "$INFO_PLIST" "CFBundleName" string "$APP_NAME"
+plist_set "$INFO_PLIST" "CFBundleDisplayName" string "$APP_NAME"
 plist_set "$INFO_PLIST" "CFBundlePackageType" string "APPL"
 plist_set "$INFO_PLIST" "CFBundleIconFile" string "$APP_NAME"
 plist_set "$INFO_PLIST" "NSPrincipalClass" string "NSApplication"
