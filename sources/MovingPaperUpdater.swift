@@ -32,7 +32,7 @@ final class MovingPaperUpdater: NSObject, ObservableObject {
         let controller = SPUStandardUpdaterController(
             startingUpdater: false,
             updaterDelegate: self,
-            userDriverDelegate: nil
+            userDriverDelegate: self
         )
         self.updaterController = controller
 
@@ -64,9 +64,13 @@ final class MovingPaperUpdater: NSObject, ObservableObject {
             status = .error(message: "Updates unavailable in development builds.")
             return
         }
-        NSApp.activate(ignoringOtherApps: true)
+        bringSparkleUIToFront()
         status = .checking
         controller.updater.checkForUpdates()
+    }
+
+    private func bringSparkleUIToFront() {
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     // MARK: - Host Validation
@@ -101,5 +105,20 @@ extension MovingPaperUpdater: @preconcurrency SPUUpdaterDelegate {
     func updater(_ updater: SPUUpdater, didAbortWithError error: any Error) {
         guard case .checking = status else { return }
         status = .error(message: (error as NSError).localizedDescription)
+    }
+}
+
+// MARK: - SPUStandardUserDriverDelegate
+
+@MainActor
+extension MovingPaperUpdater: @preconcurrency SPUStandardUserDriverDelegate {
+
+    func standardUserDriverWillShowModalAlert() {
+        bringSparkleUIToFront()
+    }
+
+    func standardUserDriverWillHandleShowingUpdate(_ handleShowingUpdate: Bool, forUpdate update: SUAppcastItem, state: SPUUserUpdateState) {
+        guard handleShowingUpdate else { return }
+        bringSparkleUIToFront()
     }
 }
