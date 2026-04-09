@@ -15,6 +15,8 @@ APP_RESOURCES="${APP_CONTENTS}/Resources"
 APP_FRAMEWORKS="${APP_CONTENTS}/Frameworks"
 APP_BINARY="${APP_MACOS}/${APP_NAME}"
 INFO_PLIST="${APP_CONTENTS}/Info.plist"
+ICONSET_DIR="${REPO_ROOT}/build/${APP_NAME}.iconset"
+ICNS_FILE="${REPO_ROOT}/build/${APP_NAME}.icns"
 SPARKLE_SOURCE="${REPO_ROOT}/tools/sparkle/Sparkle.framework"
 SPARKLE_FEED_URL="${SPARKLE_FEED_URL:-https://github.com/8bittts/movingpaper/releases/latest/download/appcast.xml}"
 SPARKLE_PUBLIC_ED_KEY="${SPARKLE_PUBLIC_ED_KEY:-0Gr0zoQweDjkOPIj9VSnNZzlTSTrnHlHnAIcwaXbmkU=}"
@@ -49,6 +51,11 @@ RESOURCE_BUNDLE="${BUILD_BIN_DIR}/${APP_NAME}_${APP_NAME}.bundle"
 [ -f "$SOURCE_PLIST" ] || { echo "Missing source Info.plist at ${SOURCE_PLIST}" >&2; exit 1; }
 [ -d "$SPARKLE_SOURCE" ] || { echo "Missing Sparkle.framework at ${SPARKLE_SOURCE}" >&2; exit 1; }
 
+swift scripts/generate-app-icon.swift >/dev/null
+if [ -d "$ICONSET_DIR" ]; then
+    iconutil -c icns "$ICONSET_DIR" -o "$ICNS_FILE"
+fi
+
 /bin/rm -rf "$APP_BUNDLE"
 mkdir -p "$APP_MACOS" "$APP_RESOURCES" "$APP_FRAMEWORKS"
 
@@ -57,6 +64,10 @@ chmod +x "$APP_BINARY"
 
 if [ -d "$RESOURCE_BUNDLE" ]; then
     cp -R "$RESOURCE_BUNDLE" "$APP_RESOURCES/"
+fi
+
+if [ -f "$ICNS_FILE" ]; then
+    cp "$ICNS_FILE" "$APP_RESOURCES/${APP_NAME}.icns"
 fi
 
 ditto "$SPARKLE_SOURCE" "$APP_FRAMEWORKS/Sparkle.framework"

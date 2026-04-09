@@ -65,9 +65,9 @@ Plays a looping video or GIF as your desktop background. Everything on your desk
 - **Sound control** -- mute or unmute video audio (muted by default)
 - **Multi-monitor** -- auto-detects displays, adapts on hot-plug
 - **Power-aware** -- pauses on Low Power Mode and thermal throttling
-- **Auto-updates** -- checks hourly via Sparkle
+- **Auto-updates** -- checks hourly via Sparkle without temporarily surfacing a Dock icon for update alerts
 - **Persistent** -- your wallpapers come back when you relaunch
-- **Menu bar only** -- no Dock icon, no clutter, no nonsense
+- **Menu bar only** -- no Dock icon, no clutter, no nonsense, even when checking for updates
 
 ## Menu
 
@@ -81,7 +81,7 @@ Plays a looping video or GIF as your desktop background. Everything on your desk
 | **MovingPaper Mode** | All Desktops or Per Desktop |
 | **Pause / Resume** | Stop or restart playback |
 | **Remove MovingPaper** | Clear wallpaper |
-| **Check for Updates...** | Sparkle update check |
+| **Check for Updates...** | Sparkle update check that stays menu-bar-only |
 | **Built with YEN** | Visit yen.chat |
 | **Quit MovingPaper** | Exit |
 
