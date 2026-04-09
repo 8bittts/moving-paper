@@ -15,6 +15,34 @@ warn()  { printf "\033[1;33mWARN:\033[0m %s\n" "$1"; }
 fail()  { printf "\033[1;31mERROR:\033[0m %s\n" "$1" >&2; exit 1; }
 step()  { printf "\033[1;36m  ->\033[0m %s\n" "$1"; }
 
+verify_live_appcast() {
+    local expected_version="$1"
+    local appcast_url="https://github.com/${GITHUB_REPO}/releases/latest/download/appcast.xml"
+    local temp_appcast
+    temp_appcast="$(mktemp "${TMPDIR:-/tmp}/movingpaper-live-appcast.XXXXXX.xml")"
+
+    for attempt in 1 2 3 4 5 6 7 8 9 10; do
+        if curl -fsSL \
+            -H "Cache-Control: no-cache" \
+            "${appcast_url}?t=$(date +%s)" \
+            -o "$temp_appcast"; then
+            if grep -q "<sparkle:shortVersionString>${expected_version}</sparkle:shortVersionString>" "$temp_appcast" \
+                && grep -q "sparkle-signatures:" "$temp_appcast" \
+                && tools/sparkle/bin/sign_update --verify "$temp_appcast" >/dev/null 2>&1; then
+                rm -f "$temp_appcast"
+                step "Verified live signed appcast"
+                return 0
+            fi
+        fi
+
+        step "Signed appcast not ready — retry ${attempt}/10 in 3s"
+        sleep 3
+    done
+
+    rm -f "$temp_appcast"
+    fail "Signed appcast failed to propagate or validate at ${appcast_url}"
+}
+
 plist_set() {
     local plist="$1"
     local key="$2"
@@ -140,6 +168,8 @@ for attempt in 1 2 3 4 5 6 7 8 9 10; do
 done
 [ "$HTTP_CODE" = "200" ] || fail "Download URL returned HTTP ${HTTP_CODE} after 10 attempts: ${DOWNLOAD_URL}"
 step "Verified release download URL"
+
+verify_live_appcast "$NEXT_VERSION"
 
 echo ""
 info "Release complete"
