@@ -35,7 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func installApplicationIcon() {
         guard
             let iconURL = Bundle.module.url(
-                forResource: "movingpaper",
+                forResource: "movingpaper-icon",
                 withExtension: "png",
                 subdirectory: "Resources"
             ),
