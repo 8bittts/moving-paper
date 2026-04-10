@@ -658,14 +658,27 @@ final class WallpaperManager: ObservableObject {
                 guard let self else { return }
                 self.refreshManagedDisplaySpaces()
 
-                if self.mode == .allDesktops, let url = self.sharedFileURL {
-                    for screen in NSScreen.screens {
-                        if let id = screen.displayID {
-                            let key = DesktopKey(displayID: id)
-                            if self.desktopFiles[key] == nil {
-                                self.desktopFiles[key] = url
-                            }
-                        }
+                if self.mode == .allDesktops {
+                    let displayIDs = NSScreen.screens.compactMap(\.displayID)
+                    let reconciledFiles = AllDesktopAssignmentReconciler.reconcile(
+                        existing: self.desktopFiles,
+                        connectedDisplayIDs: displayIDs,
+                        sharedValue: self.sharedFileURL
+                    )
+                    let reconciledYouTubeURLs = AllDesktopAssignmentReconciler.reconcile(
+                        existing: self.youtubeURLs,
+                        connectedDisplayIDs: displayIDs,
+                        sharedValue: self.youtubeURLs.values.first
+                    )
+
+                    if reconciledFiles.didChange {
+                        self.desktopFiles = reconciledFiles.assignments
+                    }
+                    if reconciledYouTubeURLs.didChange {
+                        self.youtubeURLs = reconciledYouTubeURLs.assignments
+                    }
+                    if reconciledFiles.didChange || reconciledYouTubeURLs.didChange {
+                        self.saveState()
                     }
                 }
 

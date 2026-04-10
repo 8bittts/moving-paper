@@ -108,6 +108,16 @@ final class StatusBarController {
 
         menu.addItem(.separator())
 
+        let settingsItem = NSMenuItem(
+            title: "Settings...",
+            action: #selector(openSettings),
+            keyEquivalent: ","
+        )
+        settingsItem.target = self
+        menu.addItem(settingsItem)
+
+        menu.addItem(.separator())
+
         // ── Pause / Resume ──
         if wallpaperManager.hasAnyWallpaper {
             let pauseTitle = wallpaperManager.isPaused ? "Resume" : "Pause"
@@ -162,7 +172,11 @@ final class StatusBarController {
 
     private func buildAllDesktopsMenu(_ menu: NSMenu) {
         if let url = wallpaperManager.sharedFileURL {
-            let fileItem = NSMenuItem(title: url.lastPathComponent, action: nil, keyEquivalent: "")
+            let fileItem = NSMenuItem(
+                title: MenuBarLabelFormatter.sharedWallpaperTitle(fileName: url.lastPathComponent),
+                action: nil,
+                keyEquivalent: ""
+            )
             fileItem.isEnabled = false
             menu.addItem(fileItem)
             menu.addItem(.separator())
@@ -226,7 +240,11 @@ final class StatusBarController {
         for (displayIndex, display) in displays.enumerated() {
             // Show display name only if multiple monitors
             if displays.count > 1 {
-                let displayHeader = NSMenuItem(title: display.name, action: nil, keyEquivalent: "")
+                let displayHeader = NSMenuItem(
+                    title: MenuBarLabelFormatter.displayHeaderTitle(display.name),
+                    action: nil,
+                    keyEquivalent: ""
+                )
                 displayHeader.isEnabled = false
                 menu.addItem(displayHeader)
             }
@@ -235,7 +253,10 @@ final class StatusBarController {
 
             for (index, space) in spaces.enumerated() {
                 let hasWallpaper = space.fileName != "No MovingPaper"
-                let label = "Desktop \(index + 1) — \(space.fileName)"
+                let label = MenuBarLabelFormatter.desktopWallpaperTitle(
+                    index: index + 1,
+                    fileName: space.fileName
+                )
                 let item = NSMenuItem(title: label, action: nil, keyEquivalent: "")
                 if space.isCurrent {
                     item.state = .on
@@ -412,6 +433,14 @@ final class StatusBarController {
 
     @objc private func checkForUpdates() {
         updater.checkForUpdates()
+    }
+
+    @objc private func openSettings() {
+        NSApp.activate(ignoringOtherApps: true)
+        if NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil) {
+            return
+        }
+        _ = NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
     }
 
     @objc private func openYEN() {

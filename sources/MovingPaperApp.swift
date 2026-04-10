@@ -6,7 +6,7 @@ struct MovingPaperApp: App {
 
     var body: some Scene {
         // Menu bar app — no main window scene needed.
-        // Settings window available via Cmd+, or status bar menu.
+        // Settings window available via Cmd+, or the status bar menu.
         Settings {
             SettingsView()
         }

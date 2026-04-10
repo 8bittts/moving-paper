@@ -152,6 +152,7 @@ final class LoadingOverlayController {
         }, completionHandler: {
             Task { @MainActor in
                 panel.orderOut(nil)
+                panel.close()
             }
         })
     }
