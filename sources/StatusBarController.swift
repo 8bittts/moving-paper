@@ -108,16 +108,6 @@ final class StatusBarController {
 
         menu.addItem(.separator())
 
-        let settingsItem = NSMenuItem(
-            title: "Settings...",
-            action: #selector(openSettings),
-            keyEquivalent: ","
-        )
-        settingsItem.target = self
-        menu.addItem(settingsItem)
-
-        menu.addItem(.separator())
-
         // ── Pause / Resume ──
         if wallpaperManager.hasAnyWallpaper {
             let pauseTitle = wallpaperManager.isPaused ? "Resume" : "Pause"
@@ -433,14 +423,6 @@ final class StatusBarController {
 
     @objc private func checkForUpdates() {
         updater.checkForUpdates()
-    }
-
-    @objc private func openSettings() {
-        NSApp.activate(ignoringOtherApps: true)
-        if NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil) {
-            return
-        }
-        _ = NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
     }
 
     @objc private func openYEN() {

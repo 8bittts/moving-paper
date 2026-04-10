@@ -6,9 +6,9 @@ struct MovingPaperApp: App {
 
     var body: some Scene {
         // Menu bar app — no main window scene needed.
-        // Settings window available via Cmd+, or the status bar menu.
+        // Keep a minimal scene so the dockless app can still use the SwiftUI app lifecycle.
         Settings {
-            SettingsView()
+            EmptyView()
         }
     }
 }
