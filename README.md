@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <!-- version-badge -->v0.031<!-- /version-badge --> · macOS 15+ · Swift 6 · MIT
+  <!-- version-badge -->v0.031<!-- /version-badge --> · macOS 15+ · Swift 6 · MIT · [Demo](https://x.com/8BIT/status/2043384259482902603)
 </p>
 
 ---
