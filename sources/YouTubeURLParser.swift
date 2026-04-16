@@ -3,39 +3,63 @@ import Foundation
 /// Extracts video IDs from YouTube URL strings.
 enum YouTubeURLParser {
 
-    /// Supported YouTube URL patterns:
-    ///   youtube.com/watch?v=ID
-    ///   youtu.be/ID
-    ///   youtube.com/shorts/ID
-    ///   youtube.com/embed/ID
-    ///   youtube.com/v/ID
-    ///   m.youtube.com/watch?v=ID
-    private static let patterns: [(regex: NSRegularExpression, group: Int)] = {
-        let defs: [(String, Int)] = [
-            (#"(?:youtube\.com|m\.youtube\.com)/watch\?.*v=([A-Za-z0-9_-]{11})"#, 1),
-            (#"youtu\.be/([A-Za-z0-9_-]{11})"#, 1),
-            (#"(?:youtube\.com|m\.youtube\.com)/shorts/([A-Za-z0-9_-]{11})"#, 1),
-            (#"(?:youtube\.com|m\.youtube\.com)/embed/([A-Za-z0-9_-]{11})"#, 1),
-            (#"(?:youtube\.com|m\.youtube\.com)/v/([A-Za-z0-9_-]{11})"#, 1),
-        ]
-        return defs.compactMap { pattern, group in
-            guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
-            return (regex, group)
-        }
-    }()
+    private static let allowedHosts = Set(["youtube.com", "www.youtube.com", "m.youtube.com"])
+    private static let allowedSchemes = Set(["http", "https"])
+    private static let shortHost = "youtu.be"
+    private static let allowedIDCharacters = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-")
 
     /// Extract the 11-character video ID from a YouTube URL string.
     static func videoID(from string: String) -> String? {
         let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
-        let range = NSRange(trimmed.startIndex..., in: trimmed)
+        let candidate = normalizedURLCandidate(from: trimmed)
 
-        for (regex, group) in patterns {
-            if let match = regex.firstMatch(in: trimmed, range: range),
-               let idRange = Range(match.range(at: group), in: trimmed) {
-                return String(trimmed[idRange])
-            }
+        guard let components = URLComponents(string: candidate),
+              let scheme = components.scheme?.lowercased(),
+              allowedSchemes.contains(scheme),
+              let host = components.host?.lowercased() else {
+            return nil
         }
-        return nil
+
+        if host == shortHost {
+            return validVideoID(from: firstPathComponent(in: components.path))
+        }
+
+        guard allowedHosts.contains(host) else { return nil }
+
+        switch components.path {
+        case "/watch":
+            return components.queryItems?
+                .first { $0.name == "v" }
+                .flatMap { validVideoID(from: $0.value) }
+        case "/shorts", "/embed", "/v":
+            return nil
+        default:
+            let parts = components.path.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
+            guard let route = parts.first, ["shorts", "embed", "v"].contains(route) else {
+                return nil
+            }
+            return validVideoID(from: parts.dropFirst().first)
+        }
+    }
+
+    private static func normalizedURLCandidate(from string: String) -> String {
+        guard !string.isEmpty else { return string }
+        if string.contains("://") { return string }
+        return "https://\(string)"
+    }
+
+    private static func firstPathComponent(in path: String) -> String? {
+        path.split(separator: "/", omittingEmptySubsequences: true).first.map(String.init)
+    }
+
+    private static func validVideoID(from value: String?) -> String? {
+        guard let value, value.count == 11 else {
+            return nil
+        }
+        guard value.unicodeScalars.allSatisfy({ allowedIDCharacters.contains($0) }) else {
+            return nil
+        }
+        return value
     }
 
     /// Whether the string looks like a YouTube URL.

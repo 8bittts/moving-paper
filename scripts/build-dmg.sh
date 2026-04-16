@@ -155,16 +155,14 @@ resolve_signing_identity
 codesign_base_args
 
 info "Cleaning previous artifacts"
-if [ -d "$BUILD_DIR" ]; then
-    for item in "$BUILD_DIR"/*; do
-        [ -e "$item" ] || continue
-        case "$item" in
-            *.png) ;;
-            *)     /bin/rm -rf "$item" ;;
-        esac
-    done
-fi
 mkdir -p "$BUILD_DIR"
+/bin/rm -rf \
+    "${BUILD_DIR}/${APP_NAME}.app" \
+    "${BUILD_DIR}/dmg-staging" \
+    "${BUILD_DIR}/local-run" \
+    "${BUILD_DIR}/${APP_NAME}-rw.dmg" \
+    "${BUILD_DIR}/${APP_NAME}-"*.dmg \
+    "${BUILD_DIR}/${APP_NAME}-"*.sha256
 
 info "Generating app icon"
 swift scripts/generate-app-icon.swift

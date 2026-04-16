@@ -19,6 +19,10 @@ struct YouTubeURLParserTests {
         #expect(YouTubeURLParser.videoID(from: "https://youtube.com/watch?v=dQw4w9WgXcQ") == "dQw4w9WgXcQ")
     }
 
+    @Test func watchNoScheme() {
+        #expect(YouTubeURLParser.videoID(from: "youtube.com/watch?v=dQw4w9WgXcQ") == "dQw4w9WgXcQ")
+    }
+
     @Test func watchHTTP() {
         #expect(YouTubeURLParser.videoID(from: "http://www.youtube.com/watch?v=dQw4w9WgXcQ") == "dQw4w9WgXcQ")
     }
@@ -75,6 +79,23 @@ struct YouTubeURLParserTests {
 
     @Test func otherDomain() {
         #expect(YouTubeURLParser.videoID(from: "https://vimeo.com/123456789") == nil)
+    }
+
+    @Test func rejectsYouTubeURLEmbeddedInAnotherDomainQuery() {
+        let value = "https://example.com/redirect?next=https://youtube.com/watch?v=dQw4w9WgXcQ"
+        #expect(YouTubeURLParser.videoID(from: value) == nil)
+    }
+
+    @Test func rejectsLookalikeYouTubeHost() {
+        #expect(YouTubeURLParser.videoID(from: "https://youtube.com.evil.test/watch?v=dQw4w9WgXcQ") == nil)
+    }
+
+    @Test func rejectsLookalikeShortHost() {
+        #expect(YouTubeURLParser.videoID(from: "https://youtu.be.evil.test/dQw4w9WgXcQ") == nil)
+    }
+
+    @Test func rejectsNonHTTPYouTubeScheme() {
+        #expect(YouTubeURLParser.videoID(from: "ftp://youtube.com/watch?v=dQw4w9WgXcQ") == nil)
     }
 
     @Test func tooShortID() {

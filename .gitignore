@@ -2,8 +2,10 @@
 /.build
 /build/MovingPaper.app/
 /build/dmg-staging/
+/build/local-run/
 /build/*.dmg
 /build/*.sha256
+/todos.md
 /Packages
 xcuserdata/
 DerivedData/
