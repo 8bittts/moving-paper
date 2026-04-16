@@ -359,7 +359,7 @@ final class StatusBarController {
 
     private func promptForYouTubeURL() -> String? {
         NSApp.setActivationPolicy(.regular)
-        NSApp.activate()
+        NSApp.activate(ignoringOtherApps: true)
         defer { NSApp.setActivationPolicy(.accessory) }
 
         let alert = NSAlert()
@@ -387,7 +387,7 @@ final class StatusBarController {
 
     @objc private func chooseFromPhotosForAll() {
         NSApp.setActivationPolicy(.regular)
-        NSApp.activate()
+        NSApp.activate(ignoringOtherApps: true)
         Task {
             let picker = PhotosPickerController()
             let url = await picker.run()
@@ -402,7 +402,7 @@ final class StatusBarController {
     @objc private func chooseFromPhotosForDisplay(_ sender: NSMenuItem) {
         let displayID = CGDirectDisplayID(sender.tag)
         NSApp.setActivationPolicy(.regular)
-        NSApp.activate()
+        NSApp.activate(ignoringOtherApps: true)
         Task {
             let picker = PhotosPickerController()
             let url = await picker.run()

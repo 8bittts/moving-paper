@@ -200,7 +200,7 @@ final class WallpaperManager: ObservableObject {
     /// Open file picker and assign result.
     func selectFile(for displayID: CGDirectDisplayID? = nil) {
         NSApp.setActivationPolicy(.regular)
-        NSApp.activate()
+        NSApp.activate(ignoringOtherApps: true)
         defer { NSApp.setActivationPolicy(.accessory) }
 
         let panel = NSOpenPanel()
@@ -296,11 +296,16 @@ final class WallpaperManager: ObservableObject {
     }
 
     private func showAlert(title: String, message: String) {
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
+        defer { NSApp.setActivationPolicy(.accessory) }
+
         let alert = NSAlert()
         alert.messageText = title
         alert.informativeText = message
         alert.alertStyle = .warning
         alert.addButton(withTitle: "OK")
+        alert.window.level = .floating
         alert.runModal()
     }
 
@@ -309,7 +314,7 @@ final class WallpaperManager: ObservableObject {
     /// Pick a random video from the entire Photos library and set it as wallpaper.
     func shuffleFromPhotos(for displayID: CGDirectDisplayID? = nil) {
         NSApp.setActivationPolicy(.regular)
-        NSApp.activate()
+        NSApp.activate(ignoringOtherApps: true)
         let target = assignmentTarget(for: displayID)
         let originSpaceID = displayID.map { currentSpaceID(for: $0) } ?? 0
         cancelRestoreTask()
