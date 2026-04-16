@@ -49,7 +49,7 @@ assert_plist_value() {
 assert_contains() {
     local haystack="$1"
     local needle="$2"
-    grep -q "$needle" "$haystack" || fail "${haystack} does not contain ${needle}"
+    grep -Fq -- "$needle" "$haystack" || fail "${haystack} does not contain ${needle}"
 }
 
 verify_app_bundle_shape() {
@@ -75,12 +75,16 @@ verify_app_bundle_shape() {
 
 verify_release_artifacts() {
     local version="$1"
+    local build_number="$2"
     local app="build/${APP_NAME}.app"
+    local plist="${app}/Contents/Info.plist"
     local dmg="build/${APP_NAME}-${version}.dmg"
     local sha_file="build/${APP_NAME}-${version}.sha256"
     local appcast="build/appcast.xml"
 
     verify_app_bundle_shape "$app"
+    assert_plist_value "$plist" "CFBundleShortVersionString" "$version"
+    assert_plist_value "$plist" "CFBundleVersion" "$build_number"
     require_file "$dmg"
     require_file "$sha_file"
     require_file "$appcast"
@@ -108,19 +112,32 @@ verify_release_artifacts() {
         warn "DMG was not accepted by Gatekeeper"
     fi
 
+    if xcrun stapler validate "$dmg" >/dev/null 2>&1; then
+        step "DMG notarization ticket verified"
+    else
+        [ "$REQUIRE_PRODUCTION" = false ] || fail "DMG notarization ticket missing or invalid"
+        warn "DMG notarization ticket missing or invalid"
+    fi
+
     local expected actual
     expected="$(awk '{print $1}' "$sha_file")"
     actual="$(shasum -a 256 "$dmg" | awk '{print $1}')"
     [ "$expected" = "$actual" ] || fail "DMG checksum mismatch"
     step "DMG checksum verified"
 
+    local dmg_bytes
+    dmg_bytes="$(stat -f%z "$dmg")"
     if command -v xmllint >/dev/null 2>&1; then
         xmllint --noout "$appcast"
     fi
+    assert_contains "$appcast" "<sparkle:shortVersionString>${version}</sparkle:shortVersionString>"
+    assert_contains "$appcast" "<sparkle:version>${build_number}</sparkle:version>"
+    assert_contains "$appcast" "MovingPaper-${version}.dmg"
+    assert_contains "$appcast" "length=\"${dmg_bytes}\""
     assert_contains "$appcast" "sparkle-signatures:"
     assert_contains "$appcast" "sparkle:edSignature="
     tools/sparkle/bin/sign_update --verify "$appcast" >/dev/null 2>&1 || fail "Sparkle appcast signature verification failed"
-    step "Signed appcast verified"
+    step "Signed appcast metadata verified"
 }
 
 info "Checking repository smoke-test inputs"
@@ -158,9 +175,10 @@ verify_app_bundle_shape "build/local-run/${APP_NAME}.app"
 step "Local staged app bundle verified"
 
 version="$(plist_value sources/Resources/Info.plist CFBundleShortVersionString)"
+build_number="$(plist_value sources/Resources/Info.plist CFBundleVersion)"
 if [ -d "build/${APP_NAME}.app" ] || [ "$REQUIRE_PRODUCTION" = true ]; then
     info "Verifying production release artifacts for v${version}"
-    verify_release_artifacts "$version"
+    verify_release_artifacts "$version" "$build_number"
 else
     warn "Skipping production artifact verification because build/${APP_NAME}.app is absent"
 fi

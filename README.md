@@ -52,13 +52,13 @@ Plays a looping video or GIF as your desktop background. Everything on your desk
 |--------|-----|
 | **Video files** | `.mp4`, `.mov`, `.m4v` -- seamless looping, HEVC with alpha |
 | **GIFs** | `.gif` -- native frame timing |
-| **YouTube** | Paste any URL -- downloads and loops as wallpaper |
+| **YouTube** | Paste a YouTube URL -- downloads and loops as wallpaper |
 | **Apple Photos** | Pick a video or shuffle a random one from your library |
 
 ## Features
 
 - **Apple Photos integration** -- pick a video or shuffle a random one from your entire library
-- **YouTube wallpapers** -- paste a URL, it downloads and loops
+- **YouTube wallpapers** -- paste a supported YouTube URL, it downloads and loops
 - **Resilient async loading** -- stale YouTube and Photos results are cancelled or ignored so your newest wallpaper choice wins
 - **Loading overlay** -- on-brand shimmer pill floats above all windows so you always know what's happening
 - **Per-desktop wallpapers** -- different wallpaper on each macOS Space and monitor, including separate Spaces per display
@@ -74,7 +74,7 @@ Plays a looping video or GIF as your desktop background. Everything on your desk
 | Item | |
 |------|---|
 | **Choose File...** | Pick a `.gif`, `.mp4`, `.mov`, or `.m4v` |
-| **Paste YouTube URL...** | Download a YouTube video as wallpaper |
+| **Paste YouTube URL...** | Download a supported YouTube URL as wallpaper |
 | **Choose from Photos...** | Pick a video from your Photos library |
 | **Shuffle from Photos** | Random video from your entire library |
 | **Sound: Off / On** | Toggle video audio |
@@ -103,7 +103,7 @@ swift test
 
 ```bash
 ./scripts/build_and_run.sh --logs       # launch and stream app logs
-./scripts/smoke-test.sh --production    # verify tests, release build, bundle, signing, DMG, checksum, appcast
+./scripts/smoke-test.sh --production    # verify tests, release build, signing, notarized DMG, checksum, appcast
 ./scripts/build-dmg.sh --build-only     # assemble release app bundle only
 ./scripts/build-dmg.sh --local          # build + sign + DMG, skip notarization
 ./scripts/build-dmg.sh --unsigned       # ad-hoc sign, no Developer ID
@@ -112,7 +112,7 @@ swift test
 
 Use `build_and_run.sh` for anything that touches Sparkle — it launches a fully staged `.app` bundle. `swift run MovingPaper` is fine for general codepaths, but Sparkle stays dormant there.
 
-Use `smoke-test.sh` before shipping changes. The default mode does not launch the wallpaper app; it runs the test suite, builds release, assembles a staged app bundle, and verifies core bundle shape. `--production` also requires and verifies the signed release app, signed DMG, checksum, and signed Sparkle appcast.
+Use `smoke-test.sh` before shipping changes. The default mode does not launch the wallpaper app; it runs the test suite, builds release, assembles a staged app bundle, and verifies core bundle shape. `--production` also requires and verifies the signed release app, signed and notarized DMG, checksum, and signed Sparkle appcast metadata.
 
 Don't have any videos or GIFs on-hand? The `build/tests/` folder ships with a few sample wallpapers you can load into MovingPaper to try it out. More will be added over time.
 
